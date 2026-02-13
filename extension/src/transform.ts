@@ -7,6 +7,30 @@
 export type MaskRules = Record<string, string>;
 export type AnonymizeRules = Record<string, string>;
 
+/**
+ * 한국 주요 성씨 (~100개, 인구 99%+ 커버).
+ * 첫 글자가 이 Set에 포함된 2~4글자 한글만 이름 후보로 간주.
+ */
+const KR_SURNAMES = new Set([
+  '김','이','박','최','정','강','조','윤','장','임','한','오','서','신','권',
+  '황','안','송','류','전','홍','고','문','양','손','배','백','허','유','남',
+  '심','노','하','곽','성','차','주','우','구','민','진','지','엄','채','원',
+  '천','방','공','현','감','변','여','추','도','소','석','선','설','마','길',
+  '연','위','표','명','기','반','라','왕','금','옥','육','인','맹','제','탁',
+  '봉','편','경','복','피','범','승','태','함','빈','상','모',
+]);
+
+/** 이름 뒤에 오는 호칭·직함 */
+const NAME_SUFFIX_RE = /^(\s*)(님|씨|과장|대리|부장|사원|팀장|선생|교수|박사|의원|이사|차장|실장|원장|주임)/;
+
+/** 한글 이름 후보가 실제 이름인지 판별 (성씨 사전 + 문맥) */
+function isLikelyKoreanName(candidate: string, after: string): boolean {
+  if (/다$|요$/.test(candidate)) return false;
+  if (KR_SURNAMES.has(candidate[0])) return true;
+  if (NAME_SUFFIX_RE.test(after)) return true;
+  return false;
+}
+
 // ---- 패턴 (백엔드 detector와 유사)
 const PATTERNS = {
   /** 한글 이름 2~4자 (뒤에 공백/쉼표/끝/숫자/괄호 등) */
@@ -123,7 +147,11 @@ export function applyMask(text: string, rules: MaskRules | null | undefined): st
   if (!rules || typeof rules !== 'object') return text;
   let out = text;
   if (rules.name && MASK_FNS[rules.name]) {
-    out = out.replace(PATTERNS.krName, (m) => (/다$|요$/.test(m) ? m : MASK_FNS[rules.name!](m)));
+    const fn = MASK_FNS[rules.name];
+    out = out.replace(PATTERNS.krName, (match, offset, full) => {
+      const after = full.slice(offset + match.length, offset + match.length + 10);
+      return isLikelyKoreanName(match, after) ? fn(match) : match;
+    });
   }
   if (rules.birthdate && MASK_FNS[rules.birthdate]) {
     out = replaceByRule(out, 'birthdate', PATTERNS.birthdate, (m) => MASK_FNS[rules.birthdate!](m));
@@ -144,7 +172,11 @@ export function applyAnonymize(text: string, rules: AnonymizeRules | null | unde
   if (!rules || typeof rules !== 'object') return text;
   let out = text;
   if (rules.name && ANON_FNS[rules.name]) {
-    out = out.replace(PATTERNS.krName, (m) => (/다$|요$/.test(m) ? m : ANON_FNS[rules.name!](m)));
+    const fn = ANON_FNS[rules.name];
+    out = out.replace(PATTERNS.krName, (match, offset, full) => {
+      const after = full.slice(offset + match.length, offset + match.length + 10);
+      return isLikelyKoreanName(match, after) ? fn(match) : match;
+    });
   }
   if (rules.birthdate && ANON_FNS[rules.birthdate]) {
     out = replaceByRule(out, 'birthdate', PATTERNS.birthdate, (m) => ANON_FNS[rules.birthdate!](m));

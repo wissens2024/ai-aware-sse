@@ -2,6 +2,24 @@ import { Injectable } from '@nestjs/common';
 
 export type DetectorHit = { type: string; count: number; confidence?: number };
 
+/**
+ * 한국 주요 성씨 (~100개, 인구 99%+ 커버).
+ * 첫 글자가 이 Set에 포함된 2~4글자 한글만 이름 후보로 간주.
+ */
+const KR_SURNAMES = new Set([
+  '김','이','박','최','정','강','조','윤','장','임','한','오','서','신','권',
+  '황','안','송','류','전','홍','고','문','양','손','배','백','허','유','남',
+  '심','노','하','곽','성','차','주','우','구','민','진','지','엄','채','원',
+  '천','방','공','현','감','변','여','추','도','소','석','선','설','마','길',
+  '연','위','표','명','기','반','라','왕','금','옥','육','인','맹','제','탁',
+  '봉','편','경','복','피','범','승','태','함','빈','상','모',
+]);
+
+/** 이름 뒤에 오는 호칭·직함 (문맥 보강) */
+const NAME_SUFFIX_RE = /(?=\s*(?:님|씨|과장|대리|부장|사원|팀장|선생|교수|박사|의원|이사|차장|실장|원장|센터장|소장|주임))/;
+/** 이름 앞에 오는 레이블 (문맥 보강) */
+const NAME_PREFIX_RE = /(?:이름|성명|담당자|작성자|신고자|고객|수신자|발신자|보호자|연락처\s*:?\s*[^\n]*?)\s*[:=]?\s*$/;
+
 /** 서버 측 규칙 기반 탐지 (PII / Secrets / Code). content_sample_masked 또는 텍스트에 대해 실행 */
 @Injectable()
 export class DetectorService {
@@ -21,6 +39,20 @@ export class DetectorService {
     return hits;
   }
 
+  /**
+   * 한글 이름 후보가 실제 이름인지 판별.
+   * 조건 (하나 이상 충족):
+   *  1) 첫 글자가 한국 성씨 목록에 포함
+   *  2) 앞에 "이름:", "담당자:" 등 레이블 / 뒤에 "님", "씨" 등 호칭
+   */
+  private isLikelyKoreanName(candidate: string, before: string, after: string): boolean {
+    if (/다$|요$/.test(candidate)) return false;
+    if (KR_SURNAMES.has(candidate[0])) return true;
+    if (NAME_PREFIX_RE.test(before)) return true;
+    if (NAME_SUFFIX_RE.test(after)) return true;
+    return false;
+  }
+
   private detectPII(text: string): DetectorHit {
     let count = 0;
     // 이메일
@@ -29,14 +61,14 @@ export class DetectorService {
     // 한국 휴대폰 (010-xxxx-xxxx 등)
     const krPhone = /01[0-9]-?[0-9]{3,4}-?[0-9]{4}/g;
     count += (text.match(krPhone) ?? []).length;
-    // 한글 이름 (2~4글자). 뒤에 오는 것: 공백/쉼표/끝/숫자/괄호/따옴표/마침표, 또는 '입니다'·'이에요'·'이라고' → [이름: 홍길동], "홍길동입니다", "홍길동, 010-..." 커버. 단일 조사(이/을/은)는 오탐 많아 제외
-    // '합니다'·'됩니다' 등 동사/형용사 끝(다/요) 제외해 오탐 감소
-    const krNameLookahead =
-      /(?=\s|,|\.|$|[0-9]|\)|\]|"|'|입니다|이에요|이라고)/;
-    const krNameCandidates =
-      text.match(new RegExp('[가-힣]{2,4}' + krNameLookahead.source, 'g')) ??
-      [];
-    count += krNameCandidates.filter((m) => !/다$|요$/.test(m)).length;
+    // 한글 이름 (2~4글자) — 성씨 사전 + 문맥 기반 필터링으로 오탐 감소
+    const krNameRe = /[가-힣]{2,4}(?=\s|,|\.|$|[0-9]|\)|\]|"|'|입니다|이에요|이라고)/g;
+    let m: RegExpExecArray | null;
+    while ((m = krNameRe.exec(text)) !== null) {
+      const before = text.slice(Math.max(0, m.index - 30), m.index);
+      const after = text.slice(m.index + m[0].length, Math.min(text.length, m.index + m[0].length + 10));
+      if (this.isLikelyKoreanName(m[0], before, after)) count++;
+    }
     // 주민등록번호 형식 (6-7자리, 마스킹된 것 포함)
     const ssn = /\b[0-9]{6}-?[0-9Xx*]{7}\b/g;
     count += (text.match(ssn) ?? []).length;
