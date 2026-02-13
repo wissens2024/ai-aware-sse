@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Store Screenshots</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+
+  .slide {
+    width: 1280px;
+    height: 800px;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 40px;
+  }
+
+  /* ─── Slide 1: Hero / Block Modal ─── */
+  .slide-1 {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .slide-1 .left-panel {
+    flex: 1;
+    padding: 60px 40px 60px 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .slide-1 .badge {
+    display: inline-block;
+    background: rgba(59,130,246,0.15);
+    color: #60a5fa;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(59,130,246,0.3);
+    margin-bottom: 24px;
+    width: fit-content;
+  }
+  .slide-1 h1 {
+    color: #f8fafc;
+    font-size: 44px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 20px;
+  }
+  .slide-1 h1 span { color: #3b82f6; }
+  .slide-1 p {
+    color: #94a3b8;
+    font-size: 18px;
+    line-height: 1.6;
+    max-width: 440px;
+  }
+  .slide-1 .features {
+    margin-top: 32px;
+    display: flex;
+    gap: 24px;
+  }
+  .slide-1 .feat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #cbd5e1;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .slide-1 .feat-icon {
+    width: 32px; height: 32px;
+    background: rgba(59,130,246,0.15);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .slide-1 .right-panel {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+  }
+
+  /* Block modal mockup */
+  .modal-mockup {
+    width: 420px;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1);
+    overflow: hidden;
+    transform: perspective(800px) rotateY(-5deg) rotateX(2deg);
+  }
+  .modal-header {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .modal-header .shield {
+    width: 40px; height: 40px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .modal-header-text h3 {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .modal-header-text p {
+    color: rgba(255,255,255,0.8);
+    font-size: 12px;
+    margin-top: 2px;
+  }
+  .modal-body {
+    padding: 24px;
+  }
+  .modal-body .risk-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .risk-label {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 70px;
+  }
+  .risk-track {
+    flex: 1; height: 8px;
+    background: #f1f5f9;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .risk-fill {
+    height: 100%; width: 85%;
+    background: linear-gradient(90deg, #f59e0b, #dc2626);
+    border-radius: 4px;
+  }
+  .risk-score {
+    font-size: 14px; font-weight: 700; color: #dc2626;
+  }
+  .detection-list {
+    list-style: none;
+    margin-bottom: 20px;
+  }
+  .detection-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #fef2f2;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #991b1b;
+    font-weight: 500;
+  }
+  .detection-list li .det-icon {
+    width: 24px; height: 24px;
+    background: #fecaca;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .detection-list li .det-count {
+    margin-left: auto;
+    background: #dc2626;
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+  }
+  .modal-body .policy-note {
+    font-size: 12px;
+    color: #64748b;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border-left: 3px solid #3b82f6;
+    margin-bottom: 16px;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+  }
+  .modal-actions button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-block {
+    background: #dc2626;
+    color: #fff;
+  }
+  .btn-cancel {
+    background: #f1f5f9;
+    color: #475569;
+  }
+
+  /* ─── Slide 2: Detection Flow ─── */
+  .slide-2 {
+    background: linear-gradient(135deg, #0c1222 0%, #162033 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 80px;
+  }
+  .slide-2 .section-title {
+    color: #f8fafc;
+    font-size: 32px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  .slide-2 .section-sub {
+    color: #64748b;
+    font-size: 16px;
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .flow-container {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .flow-step {
+    width: 200px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 28px 20px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+  .flow-step:hover {
+    background: rgba(59,130,246,0.1);
+    border-color: rgba(59,130,246,0.3);
+  }
+  .flow-step .step-icon {
+    width: 56px; height: 56px;
+    margin: 0 auto 16px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+  }
+  .flow-step h4 {
+    color: #e2e8f0;
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .flow-step p {
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .flow-arrow {
+    color: #3b82f6;
+    font-size: 24px;
+    font-weight: bold;
+  }
+  .step-paste .step-icon { background: rgba(139,92,246,0.2); }
+  .step-detect .step-icon { background: rgba(245,158,11,0.2); }
+  .step-policy .step-icon { background: rgba(59,130,246,0.2); }
+  .step-action .step-icon { background: rgba(220,38,38,0.2); }
+  .step-audit .step-icon { background: rgba(16,185,129,0.2); }
+
+  .outcome-cards {
+    display: flex;
+    gap: 16px;
+    margin-top: 48px;
+  }
+  .outcome-card {
+    padding: 16px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .oc-allow { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+  .oc-warn { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+  .oc-block { background: rgba(220,38,38,0.15); color: #f87171; border: 1px solid rgba(220,38,38,0.3); }
+  .oc-mask { background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); }
+  .oc-approve { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+
+  /* ─── Slide 3: Admin + Policy ─── */
+  .slide-3 {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    display: flex;
+    padding: 50px 60px;
+    gap: 40px;
+  }
+  .slide-3 .info-col {
+    width: 360px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .slide-3 .info-col h2 {
+    color: #f8fafc;
+    font-size: 30px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    line-height: 1.3;
+  }
+  .slide-3 .info-col p {
+    color: #94a3b8;
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 28px;
+  }
+  .feature-list {
+    list-style: none;
+  }
+  .feature-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .feature-list .fl-icon {
+    width: 36px; height: 36px;
+    background: rgba(59,130,246,0.15);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .feature-list .fl-text h5 {
+    color: #e2e8f0;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+  .feature-list .fl-text p {
+    color: #64748b;
+    font-size: 12px;
+    margin-bottom: 0;
+    line-height: 1.4;
+  }
+
+  .slide-3 .dashboard-col {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dashboard-mockup {
+    width: 100%;
+    background: #0f172a;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+  }
+  .dash-titlebar {
+    height: 36px;
+    background: #1e293b;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 8px;
+  }
+  .dash-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+  .dash-dot.r { background: #ef4444; }
+  .dash-dot.y { background: #eab308; }
+  .dash-dot.g { background: #22c55e; }
+  .dash-titlebar span {
+    color: #64748b;
+    font-size: 12px;
+    margin-left: 12px;
+  }
+  .dash-content {
+    padding: 24px;
+  }
+  .dash-nav {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+  }
+  .dash-nav span {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748b;
+  }
+  .dash-nav span.active {
+    background: rgba(59,130,246,0.15);
+    color: #60a5fa;
+  }
+  .dash-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .stat-card .stat-label {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .stat-card .stat-value {
+    font-size: 26px;
+    font-weight: 700;
+    margin-top: 6px;
+  }
+  .stat-card .stat-change {
+    font-size: 11px;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  .sv-blue { color: #3b82f6; }
+  .sv-red { color: #ef4444; }
+  .sv-green { color: #22c55e; }
+  .sv-yellow { color: #eab308; }
+  .sc-up { color: #22c55e; }
+  .sc-down { color: #ef4444; }
+
+  .dash-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .dash-table th {
+    text-align: left;
+    padding: 10px 12px;
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .dash-table td {
+    padding: 12px;
+    font-size: 13px;
+    color: #cbd5e1;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .pill-block { background: rgba(220,38,38,0.15); color: #f87171; }
+  .pill-warn { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .pill-allow { background: rgba(16,185,129,0.15); color: #34d399; }
+  .pill-mask { background: rgba(139,92,246,0.15); color: #a78bfa; }
+  .pill-high { background: rgba(220,38,38,0.15); color: #f87171; }
+  .pill-mid { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .pill-low { background: rgba(16,185,129,0.15); color: #34d399; }
+</style>
+</head>
+<body>
+
+<!-- ═══ Screenshot 1: Hero ═══ -->
+<div class="slide slide-1" id="slide1">
+  <div class="left-panel">
+    <div class="badge">AI-Aware SSE v0.1</div>
+    <h1>AI 서비스로의<br><span>민감 정보 유출</span>을<br>실시간 차단</h1>
+    <p>ChatGPT, Claude, Copilot, Gemini에 민감한 데이터를 붙여넣기하거나 전송할 때 정책 기반으로 탐지·차단·마스킹합니다.</p>
+    <div class="features">
+      <div class="feat">
+        <div class="feat-icon">🔍</div>
+        PII 탐지
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🔑</div>
+        시크릿 키 감지
+      </div>
+      <div class="feat">
+        <div class="feat-icon">💻</div>
+        소스코드 탐지
+      </div>
+      <div class="feat">
+        <div class="feat-icon">📋</div>
+        전수 감사
+      </div>
+    </div>
+  </div>
+  <div class="right-panel">
+    <div class="modal-mockup">
+      <div class="modal-header">
+        <div class="shield">🛡️</div>
+        <div class="modal-header-text">
+          <h3>전송이 차단되었습니다</h3>
+          <p>chatgpt.com · PASTE 이벤트</p>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="risk-bar">
+          <span class="risk-label">위험도</span>
+          <div class="risk-track"><div class="risk-fill"></div></div>
+          <span class="risk-score">85</span>
+        </div>
+        <ul class="detection-list">
+          <li>
+            <span class="det-icon">🔑</span>
+            AWS Secret Key 탐지됨
+            <span class="det-count">2건</span>
+          </li>
+          <li>
+            <span class="det-icon">👤</span>
+            개인정보 (이메일, 전화번호)
+            <span class="det-count">5건</span>
+          </li>
+          <li>
+            <span class="det-icon">💻</span>
+            소스코드 패턴 감지
+            <span class="det-count">1건</span>
+          </li>
+        </ul>
+        <div class="policy-note">
+          정책: <strong>민감정보 차단 정책</strong> (우선순위 1)에 의해 차단됨
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel">승인 요청</button>
+          <button class="btn-block">확인 (차단)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Screenshot 2: Detection Flow ═══ -->
+<div class="slide slide-2" id="slide2">
+  <div class="section-title">실시간 정책 기반 탐지 흐름</div>
+  <div class="section-sub">사용자의 모든 AI 서비스 전송을 실시간으로 분석하고 정책에 따라 조치합니다</div>
+  <div class="flow-container">
+    <div class="flow-step step-paste">
+      <div class="step-icon">📋</div>
+      <h4>이벤트 감지</h4>
+      <p>Paste / Submit /<br>File Upload 이벤트를<br>실시간으로 후킹</p>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step step-detect">
+      <div class="step-icon">🔍</div>
+      <h4>콘텐츠 분석</h4>
+      <p>PII, 시크릿 키,<br>소스코드 패턴을<br>서버사이드 탐지</p>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step step-policy">
+      <div class="step-icon">📜</div>
+      <h4>정책 평가</h4>
+      <p>우선순위 기반 정책<br>매칭 및 조건 평가<br>(그룹/앱/탐지 결과)</p>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step step-action">
+      <div class="step-icon">⚡</div>
+      <h4>조치 실행</h4>
+      <p>ALLOW / WARN /<br>BLOCK / MASK /<br>승인 요청</p>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step step-audit">
+      <div class="step-icon">📊</div>
+      <h4>감사 기록</h4>
+      <p>모든 이벤트와 결정을<br>해시 기반으로 기록<br>(원본 미저장)</p>
+    </div>
+  </div>
+  <div class="outcome-cards">
+    <div class="outcome-card oc-allow">✅ ALLOW</div>
+    <div class="outcome-card oc-warn">⚠️ WARN</div>
+    <div class="outcome-card oc-block">🚫 BLOCK</div>
+    <div class="outcome-card oc-mask">🎭 MASK</div>
+    <div class="outcome-card oc-approve">📝 REQUIRE APPROVAL</div>
+  </div>
+</div>
+
+<!-- ═══ Screenshot 3: Admin Dashboard ═══ -->
+<div class="slide slide-3" id="slide3">
+  <div class="info-col">
+    <h2>관리 콘솔에서<br>모든 것을 관리</h2>
+    <p>실시간 대시보드, 정책 관리, 승인 워크플로우, 감사 로그를 한 곳에서 관리합니다.</p>
+    <ul class="feature-list">
+      <li>
+        <div class="fl-icon">📊</div>
+        <div class="fl-text">
+          <h5>실시간 대시보드</h5>
+          <p>이벤트 현황, 차단 통계, 위험도 트렌드를 한눈에 파악</p>
+        </div>
+      </li>
+      <li>
+        <div class="fl-icon">📜</div>
+        <div class="fl-text">
+          <h5>세밀한 정책 설정</h5>
+          <p>그룹/앱/이벤트별 조건부 정책으로 유연한 제어</p>
+        </div>
+      </li>
+      <li>
+        <div class="fl-icon">✅</div>
+        <div class="fl-text">
+          <h5>승인 워크플로우</h5>
+          <p>차단된 콘텐츠에 대한 관리자 승인 요청 및 처리</p>
+        </div>
+      </li>
+      <li>
+        <div class="fl-icon">🔒</div>
+        <div class="fl-text">
+          <h5>프라이버시 우선</h5>
+          <p>원본 콘텐츠 미저장 — 해시, 길이, 탐지 결과만 기록</p>
+        </div>
+      </li>
+    </ul>
+  </div>
+  <div class="dashboard-col">
+    <div class="dashboard-mockup">
+      <div class="dash-titlebar">
+        <div class="dash-dot r"></div>
+        <div class="dash-dot y"></div>
+        <div class="dash-dot g"></div>
+        <span>AI-Aware SSE Admin Console</span>
+      </div>
+      <div class="dash-content">
+        <div class="dash-nav">
+          <span class="active">대시보드</span>
+          <span>이벤트</span>
+          <span>정책 관리</span>
+          <span>승인 관리</span>
+          <span>감사 로그</span>
+          <span>사용자</span>
+        </div>
+        <div class="dash-stats">
+          <div class="stat-card">
+            <div class="stat-label">오늘 이벤트</div>
+            <div class="stat-value sv-blue">1,247</div>
+            <div class="stat-change sc-up">↑ 12% vs 어제</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">차단 건수</div>
+            <div class="stat-value sv-red">89</div>
+            <div class="stat-change sc-down">↓ 5% vs 어제</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">승인 대기</div>
+            <div class="stat-value sv-yellow">7</div>
+            <div class="stat-change sc-up">↑ 3건 신규</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">활성 정책</div>
+            <div class="stat-value sv-green">12</div>
+            <div class="stat-change" style="color:#64748b;">변동 없음</div>
+          </div>
+        </div>
+        <table class="dash-table">
+          <thead>
+            <tr>
+              <th>시간</th>
+              <th>사용자</th>
+              <th>앱</th>
+              <th>이벤트</th>
+              <th>결정</th>
+              <th>위험도</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>14:32:05</td>
+              <td>alice@corp.kr</td>
+              <td>chatgpt.com</td>
+              <td>PASTE</td>
+              <td><span class="pill pill-block">BLOCK</span></td>
+              <td><span class="pill pill-high">85</span></td>
+            </tr>
+            <tr>
+              <td>14:31:42</td>
+              <td>bob@corp.kr</td>
+              <td>claude.ai</td>
+              <td>SUBMIT</td>
+              <td><span class="pill pill-warn">WARN</span></td>
+              <td><span class="pill pill-mid">52</span></td>
+            </tr>
+            <tr>
+              <td>14:30:18</td>
+              <td>carol@corp.kr</td>
+              <td>copilot.ms</td>
+              <td>UPLOAD</td>
+              <td><span class="pill pill-mask">MASK</span></td>
+              <td><span class="pill pill-mid">67</span></td>
+            </tr>
+            <tr>
+              <td>14:29:55</td>
+              <td>dave@corp.kr</td>
+              <td>gemini.google</td>
+              <td>PASTE</td>
+              <td><span class="pill pill-allow">ALLOW</span></td>
+              <td><span class="pill pill-low">12</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,306 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["sse"]
+}
+
+model app_domains {
+  @@schema("sse")
+  app_domain_id String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id     String   @db.Uuid
+  app_id        String   @db.Uuid
+  domain        String
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  apps          apps     @relation(fields: [app_id], references: [app_id], onDelete: Cascade, onUpdate: NoAction)
+  tenants       tenants  @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([tenant_id, domain])
+  @@index([tenant_id, domain], map: "idx_app_domains_tenant_domain")
+}
+
+model approval_cases {
+  @@schema("sse")
+  case_id                                          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id                                        String          @db.Uuid
+  event_id                                         String          @db.Uuid
+  decision_id                                      String?         @db.Uuid
+  status                                           approval_status @default(PENDING)
+  requested_by_user_id                             String?         @db.Uuid
+  requested_by_email                               String?         @db.Citext
+  request_reason                                   String?
+  approver_group_id                                String?         @db.Uuid
+  decided_by_user_id                               String?         @db.Uuid
+  decision_comment                                 String?
+  decision_payload_json                            Json?
+  expires_at                                       DateTime?       @db.Timestamptz(6)
+  created_at                                       DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at                                       DateTime        @default(now()) @db.Timestamptz(6)
+  groups                                           groups?         @relation(fields: [approver_group_id], references: [group_id], onUpdate: NoAction)
+  users_approval_cases_decided_by_user_idTousers   users?          @relation("approval_cases_decided_by_user_idTousers", fields: [decided_by_user_id], references: [user_id], onUpdate: NoAction)
+  decisions                                        decisions?      @relation(fields: [decision_id], references: [decision_id], onUpdate: NoAction)
+  events                                           events          @relation(fields: [event_id], references: [event_id], onDelete: Cascade, onUpdate: NoAction)
+  users_approval_cases_requested_by_user_idTousers users?          @relation("approval_cases_requested_by_user_idTousers", fields: [requested_by_user_id], references: [user_id], onUpdate: NoAction)
+  tenants                                          tenants         @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
+  policy_exceptions                                policy_exceptions[]
+
+  @@index([tenant_id, status, created_at(sort: Desc)], map: "idx_cases_tenant_status_time")
+}
+
+model apps {
+  @@schema("sse")
+  app_id      String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id   String        @db.Uuid
+  name        String
+  enabled     Boolean       @default(true)
+  created_at  DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime      @default(now()) @db.Timestamptz(6)
+  app_domains app_domains[]
+  tenants     tenants       @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
+  events      events[]
+}
+
+model audit_trail {
+  @@schema("sse")
+  audit_id      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id     String   @db.Uuid
+  time          DateTime @default(now()) @db.Timestamptz(6)
+  actor_user_id String?  @db.Uuid
+  actor_email   String?  @db.Citext
+  action        String
+  target_type   String?
+  target_id     String?  @db.Uuid
+  details_json  Json     @default("{}")
+  users         users?   @relation(fields: [actor_user_id], references: [user_id], onUpdate: NoAction)
+  tenants       tenants  @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([tenant_id, time(sort: Desc)], map: "idx_audit_tenant_time")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model decisions {
+  @@schema("sse")
+  decision_id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id              String           @db.Uuid
+  event_id               String           @db.Uuid
+  outcome                decision_outcome
+  action_json            Json
+  risk_score             Int              @default(0)
+  matched_policy_id      String?          @db.Uuid
+  matched_policy_version Int?
+  detector_hits_json     Json             @default("[]")
+  explanation_text       String?
+  created_at             DateTime         @default(now()) @db.Timestamptz(6)
+  approval_cases         approval_cases[]
+  events                 events           @relation(fields: [event_id], references: [event_id], onDelete: Cascade, onUpdate: NoAction)
+  policies               policies?        @relation(fields: [matched_policy_id], references: [policy_id], onUpdate: NoAction)
+  tenants                tenants          @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([tenant_id, event_id], map: "idx_decisions_tenant_event")
+  @@index([tenant_id, outcome, created_at(sort: Desc)], map: "idx_decisions_tenant_outcome_time")
+}
+
+model detector_configs {
+  @@schema("sse")
+  detector_id String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id   String        @db.Uuid
+  type        detector_type
+  enabled     Boolean       @default(true)
+  config_json Json
+  version     Int           @default(1)
+  created_at  DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime      @default(now()) @db.Timestamptz(6)
+  tenants     tenants       @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([tenant_id, type])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model events {
+  @@schema("sse")
+  event_id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id             String           @db.Uuid
+  time                  DateTime         @default(now()) @db.Timestamptz(6)
+  user_id               String?          @db.Uuid
+  actor_email           String?          @db.Citext
+  group_snapshot        Json             @default("[]")
+  app_id                String?          @db.Uuid
+  domain                String?
+  url                   String?
+  event_type            event_type
+  trace_id              String?
+  content_kind          content_kind
+  content_length        Int              @default(0)
+  content_sha256        String?
+  content_sample_masked String?
+  file_name             String?
+  file_size_bytes       BigInt?
+  file_mime             String?
+  file_ext              String?
+  file_sha256           String?
+  client_meta_json      Json             @default("{}")
+  schema_version        Int              @default(1)
+  approval_cases        approval_cases[]
+  decisions             decisions[]
+  apps                  apps?            @relation(fields: [app_id], references: [app_id], onUpdate: NoAction)
+  tenants               tenants          @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
+  users                 users?           @relation(fields: [user_id], references: [user_id], onUpdate: NoAction)
+
+  @@index([group_snapshot], map: "idx_events_group_snapshot_gin", type: Gin)
+  @@index([tenant_id, domain, time(sort: Desc)], map: "idx_events_tenant_domain_time")
+  @@index([tenant_id, event_type, time(sort: Desc)], map: "idx_events_tenant_event_type_time")
+  @@index([tenant_id, time(sort: Desc)], map: "idx_events_tenant_time")
+  @@index([tenant_id, user_id, time(sort: Desc)], map: "idx_events_tenant_user_time")
+}
+
+model groups {
+  @@schema("sse")
+  group_id       String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String           @db.Uuid
+  name           String
+  created_at     DateTime         @default(now()) @db.Timestamptz(6)
+  approval_cases approval_cases[]
+  tenants        tenants          @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
+  user_groups    user_groups[]
+
+  @@unique([tenant_id, name])
+  @@index([tenant_id, name], map: "idx_groups_tenant_name")
+}
+
+model policy_exceptions {
+  @@schema("sse")
+  exception_id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id             String        @db.Uuid
+  actor_email           String?       @db.Text
+  policy_id             String        @db.Uuid
+  expires_at            DateTime      @db.Timestamptz(6)
+  created_from_case_id  String        @db.Uuid
+  created_at            DateTime      @default(now()) @db.Timestamptz(6)
+  approval_cases        approval_cases @relation(fields: [created_from_case_id], references: [case_id], onDelete: NoAction, onUpdate: NoAction)
+  policies              policies      @relation(fields: [policy_id], references: [policy_id], onDelete: Cascade, onUpdate: NoAction)
+  tenants               tenants       @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([tenant_id, actor_email, policy_id], map: "idx_policy_exceptions_lookup")
+  @@index([expires_at], map: "idx_policy_exceptions_expires")
+}
+
+model policies {
+  @@schema("sse")
+  policy_id      String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String      @db.Uuid
+  name           String
+  description    String?
+  priority       Int         @default(100)
+  enabled        Boolean     @default(true)
+  scope_json     Json
+  condition_json Json
+  action_json    Json
+  version        Int         @default(1)
+  created_by     String?     @db.Uuid
+  updated_by     String?     @db.Uuid
+  created_at     DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime    @default(now()) @db.Timestamptz(6)
+  decisions      decisions[]
+  policy_exceptions policy_exceptions[]
+  tenants        tenants     @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([tenant_id, name])
+  @@index([scope_json], map: "idx_policies_scope_gin", type: Gin)
+  @@index([tenant_id, enabled, priority], map: "idx_policies_tenant_enabled_priority")
+}
+
+model tenants {
+  @@schema("sse")
+  tenant_id          String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name               String
+  created_at         DateTime           @default(now()) @db.Timestamptz(6)
+  app_domains        app_domains[]
+  approval_cases     approval_cases[]
+  apps               apps[]
+  audit_trail        audit_trail[]
+  decisions          decisions[]
+  detector_configs   detector_configs[]
+  events             events[]
+  groups             groups[]
+  policies           policies[]
+  policy_exceptions  policy_exceptions[]
+  user_groups        user_groups[]
+  users              users[]
+}
+
+model user_groups {
+  @@schema("sse")
+  tenant_id  String   @db.Uuid
+  user_id    String   @db.Uuid
+  group_id   String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  groups     groups   @relation(fields: [group_id], references: [group_id], onDelete: Cascade, onUpdate: NoAction)
+  tenants    tenants  @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
+  users      users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([tenant_id, user_id, group_id])
+}
+
+model users {
+  @@schema("sse")
+  user_id                                                   String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id                                                 String           @db.Uuid
+  external_id                                               String?
+  email                                                     String?          @db.Citext
+  display_name                                              String?
+  created_at                                                DateTime         @default(now()) @db.Timestamptz(6)
+  approval_cases_approval_cases_decided_by_user_idTousers   approval_cases[] @relation("approval_cases_decided_by_user_idTousers")
+  approval_cases_approval_cases_requested_by_user_idTousers approval_cases[] @relation("approval_cases_requested_by_user_idTousers")
+  audit_trail                                               audit_trail[]
+  events                                                    events[]
+  user_groups                                               user_groups[]
+  tenants                                                   tenants          @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([tenant_id, email])
+  @@unique([tenant_id, external_id])
+  @@index([tenant_id, email], map: "idx_users_tenant_email")
+}
+
+enum approval_status {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  CANCELLED
+  @@schema("sse")
+}
+
+enum content_kind {
+  TEXT
+  FILE_META
+  @@schema("sse")
+}
+
+enum decision_outcome {
+  ALLOW
+  WARN
+  BLOCK
+  MASK
+  ANONYMIZE
+  REQUIRE_APPROVAL
+  @@schema("sse")
+}
+
+enum detector_type {
+  PII
+  SECRETS
+  CODE
+  CLASSIFIER
+  @@schema("sse")
+}
+
+enum event_type {
+  TYPE
+  PASTE
+  SUBMIT
+  UPLOAD_SELECT
+  UPLOAD_SUBMIT
+  @@schema("sse")
+}

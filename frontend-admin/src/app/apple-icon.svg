@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+  <rect width="180" height="180" rx="40" fill="#1e293b"/>
+  <defs>
+    <linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <!-- Shield body -->
+  <path d="M90 25 L150 50 L150 95 C150 130 125 155 90 168 C55 155 30 130 30 95 L30 50 Z" fill="url(#sg)" stroke="#1e40af" stroke-width="1"/>
+  <path d="M90 40 L138 60 L138 95 C138 123 118 145 90 155 C62 145 42 123 42 95 L42 60 Z" fill="#1e3a5f" opacity="0.2"/>
+  <!-- Lock shackle -->
+  <path d="M70 88 L70 78 C70 64 78 56 90 56 C102 56 110 64 110 78 L110 88" fill="none" stroke="white" stroke-width="8" stroke-linecap="round"/>
+  <!-- Lock body -->
+  <rect x="62" y="85" width="56" height="42" rx="8" fill="white"/>
+  <!-- Keyhole -->
+  <circle cx="90" cy="102" r="7" fill="#2563eb"/>
+  <rect x="87" y="106" width="6" height="12" rx="2" fill="#2563eb"/>
+</svg>

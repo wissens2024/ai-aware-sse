@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: 248 250 252;
+    --bg-card: 255 255 255;
+    --text: 15 23 42;
+    --text-muted: 100 116 139;
+    --border: 226 232 240;
+    --ring: 59 130 246;
+  }
+  .dark {
+    --bg: 15 23 42;
+    --bg-card: 30 41 59;
+    --text: 248 250 252;
+    --text-muted: 148 163 184;
+    --border: 51 65 85;
+    --ring: 96 165 250;
+  }
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100;
+  }
+}
+
+/* AG Grid in dark mode: use Alpine theme with dark class on html */
+.ag-theme-alpine {
+  --ag-background-color: rgb(var(--bg-card));
+  --ag-foreground-color: rgb(var(--text));
+  --ag-header-background-color: rgb(241 245 249);
+  --ag-header-foreground-color: rgb(15 23 42);
+  --ag-border-color: rgb(var(--border));
+}
+.dark .ag-theme-alpine {
+  --ag-background-color: rgb(30 41 59);
+  --ag-foreground-color: rgb(248 250 252);
+  --ag-header-background-color: rgb(51 65 85);
+  --ag-header-foreground-color: rgb(248 250 252);
+  --ag-border-color: rgb(71 85 105);
+  --ag-row-hover-color: rgb(51 65 85);
+}
+/* 다크 모드: 짝/홀 행 배경을 어두운 색으로, 기본 글자는 밝은 색. BLOCK/WARN 등은 cellClassRules 색 유지 */
+.dark .ag-theme-alpine .ag-row,
+.dark .ag-theme-alpine .ag-row-odd,
+.dark .ag-theme-alpine .ag-row-even {
+  background-color: rgb(30 41 59) !important;
+  color: rgb(248 250 252);
+}
+.dark .ag-theme-alpine .ag-body-viewport {
+  background-color: rgb(30 41 59);
+}

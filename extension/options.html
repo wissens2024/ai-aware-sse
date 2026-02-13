@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AI-Aware SSE Extension Options</title>
+  <style>
+    body { font-family: system-ui; padding: 16px; max-width: 480px; }
+    label { display: block; margin-top: 12px; }
+    input { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; }
+    button { margin-top: 16px; padding: 8px 16px; background: #2563eb; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h2>Extension 설정 <span id="modeBadge" style="font-size:14px; font-weight:bold; padding:2px 8px; border:1px solid #ccc; border-radius:4px;"></span></h2>
+  <label>API Base URL</label>
+  <input type="text" id="apiBase" placeholder="빌드 기본값이 자동 설정됩니다">
+  <label>Device Token (PoC, backend .env의 EXT_DEVICE_TOKEN과 동일)</label>
+  <input type="text" id="deviceToken" placeholder="devtoken-123">
+  <label><strong>내 이메일</strong> (선택) — 정책·승인·예외에서 사용자 식별. Admin에 등록된 사용자 이메일과 일치시키세요.</label>
+  <input type="email" id="actorEmail" placeholder="alice@example.com">
+  <label>그룹 (선택, 쉼표 구분) — 비우면 백엔드가 이메일로 DB에서 조회. 예: AllEmployees, Dev</label>
+  <input type="text" id="actorGroups" placeholder="AllEmployees, Dev">
+  <button id="save">저장</button>
+  <script src="dist/options.js"></script>
+</body>
+</html>
