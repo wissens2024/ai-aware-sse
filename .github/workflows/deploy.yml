@@ -51,6 +51,9 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+            export PATH="$HOME/.local/share/pnpm:$HOME/.npm-global/bin:$PATH"
             cd /home/ju/sase/ai-aware-sse
             git pull origin main
             cd backend
@@ -71,6 +74,9 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+            export PATH="$HOME/.local/share/pnpm:$HOME/.npm-global/bin:$PATH"
             cd /home/ju/sase/ai-aware-sse
             git pull origin main
             cd frontend-admin
