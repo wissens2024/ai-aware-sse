@@ -42,18 +42,26 @@ function isLikelyKoreanName(candidate: string, before: string, after: string, fu
   return false;
 }
 
-// ---- 패턴 (백엔드 detector와 유사)
+// ---- 패턴 (백엔드 detector와 동기화)
 const PATTERNS = {
-  /** 한글 이름 2~4자 (뒤에 공백/쉼표/끝/숫자/괄호 등) */
+  /** 한글 이름 2~4자 */
   krName: /[가-힣]{2,4}(?=\s|,|\.|$|[0-9]|\)|\]|"|'|입니다|이에요|이라고)/g,
   /** 생년월일 YYYY-MM-DD 또는 YYYYMMDD */
   birthdate: /\b(19|20)[0-9]{2}-?[0-9]{2}-?[0-9]{2}\b/g,
-  /** 한국 휴대폰 */
-  phone: /01[0-9]-?[0-9]{3,4}-?[0-9]{4}/g,
+  /** 휴대전화 (010/011/016/017/018/019) */
+  phone: /\b01[016789][- ]?\d{3,4}[- ]?\d{4}\b/g,
+  /** 일반전화 (지역번호) */
+  landline: /\b0\d{1,2}[- ]?\d{3,4}[- ]?\d{4}\b/g,
   /** 이메일 */
-  email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
-  /** 주민등록번호 6자리-7자리 (하이픈 있거나 없음) */
-  rrn: /\b[0-9]{6}-?[0-9]{7}\b/g,
+  email: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
+  /** 주민등록번호 (7번째 자리 1~4 검증) */
+  rrn: /\b\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[- ]?[1-4]\d{6}\b/g,
+  /** 운전면허번호 */
+  driverLicense: /\b\d{2}-\d{2}-\d{6}-\d{2}\b/g,
+  /** 사업자등록번호 */
+  bizNo: /\b\d{3}-\d{2}-\d{5}\b/g,
+  /** 카드번호 (4-4-4-4) */
+  card: /\b(?:\d{4}[- ]?){3}\d{4}\b/g,
 };
 
 /** 마스킹: 자리수 보존 */
@@ -93,13 +101,41 @@ function maskRrnBack(m: string): string {
   return m.slice(0, 6) + (m[6] === '-' ? '-' : '') + '*******';
 }
 
+/** 운전면허: 앞 4자리만 노출 */
+function maskDriverLicense(m: string): string {
+  return m.slice(0, 5) + '-**-******-**';
+}
+
+/** 사업자등록번호: 앞 3자리만 노출 */
+function maskBizNo(m: string): string {
+  return m.slice(0, 3) + '-**-*****';
+}
+
+/** 카드번호: 앞 4 + 뒤 4 노출 */
+function maskCard(m: string): string {
+  const digits = m.replace(/[- ]/g, '');
+  if (digits.length >= 16) return digits.slice(0, 4) + '-****-****-' + digits.slice(-4);
+  return m;
+}
+
+/** 일반전화: 가운데 마스킹 */
+function maskLandline(m: string): string {
+  const digits = m.replace(/[- ]/g, '');
+  if (digits.length >= 9) return digits.slice(0, digits.length - 8) + '-****-' + digits.slice(-4);
+  return m;
+}
+
 /** 적용할 마스킹 함수맵 */
 const MASK_FNS: Record<string, (m: string) => string> = {
   first_char_only: maskNameFirstCharOnly,
   year_only: maskBirthdateYearOnly,
   middle_masked: maskPhoneMiddle,
+  landline_masked: maskLandline,
   domain_hidden: maskEmailDomainHidden,
   back_masked: maskRrnBack,
+  driver_license_masked: maskDriverLicense,
+  biz_no_masked: maskBizNo,
+  card_masked: maskCard,
 };
 
 /** 익명화: 같은 형식 대체값 (간단 버전) */
@@ -144,19 +180,26 @@ const ANON_FNS: Record<string, (m: string) => string> = {
   replace_with_random_rrn: anonymizeRrn,
 };
 
-/** 규칙에 따라 한 종류씩 치환. rules 키는 name, birthdate, phone, email, rrn */
-function replaceByRule(
-  text: string,
-  ruleKey: 'name' | 'birthdate' | 'phone' | 'email' | 'rrn',
-  pattern: RegExp,
-  fn: (m: string) => string,
-): string {
+/** 규칙에 따라 한 종류씩 치환 */
+function replaceByRule(text: string, pattern: RegExp, fn: (m: string) => string): string {
   return text.replace(pattern, fn);
+}
+
+/** 규칙 키 → 패턴 & 함수 매핑 헬퍼 */
+function applyRuleIfPresent(
+  out: string, rules: Record<string, string>, key: string,
+  fnMap: Record<string, (m: string) => string>, pattern: RegExp,
+): string {
+  if (rules[key] && fnMap[rules[key]]) {
+    out = replaceByRule(out, pattern, (m) => fnMap[rules[key]](m));
+  }
+  return out;
 }
 
 export function applyMask(text: string, rules: MaskRules | null | undefined): string {
   if (!rules || typeof rules !== 'object') return text;
   let out = text;
+  // 이름 — 문맥 필수 필터
   if (rules.name && MASK_FNS[rules.name]) {
     const fn = MASK_FNS[rules.name];
     out = out.replace(PATTERNS.krName, (match, offset, full) => {
@@ -165,24 +208,21 @@ export function applyMask(text: string, rules: MaskRules | null | undefined): st
       return isLikelyKoreanName(match, before, after, full, offset) ? fn(match) : match;
     });
   }
-  if (rules.birthdate && MASK_FNS[rules.birthdate]) {
-    out = replaceByRule(out, 'birthdate', PATTERNS.birthdate, (m) => MASK_FNS[rules.birthdate!](m));
-  }
-  if (rules.phone && MASK_FNS[rules.phone]) {
-    out = replaceByRule(out, 'phone', PATTERNS.phone, (m) => MASK_FNS[rules.phone!](m));
-  }
-  if (rules.email && MASK_FNS[rules.email]) {
-    out = replaceByRule(out, 'email', PATTERNS.email, (m) => MASK_FNS[rules.email!](m));
-  }
-  if (rules.rrn && MASK_FNS[rules.rrn]) {
-    out = replaceByRule(out, 'rrn', PATTERNS.rrn, (m) => MASK_FNS[rules.rrn!](m));
-  }
+  out = applyRuleIfPresent(out, rules, 'birthdate', MASK_FNS, PATTERNS.birthdate);
+  out = applyRuleIfPresent(out, rules, 'phone', MASK_FNS, PATTERNS.phone);
+  out = applyRuleIfPresent(out, rules, 'landline', MASK_FNS, PATTERNS.landline);
+  out = applyRuleIfPresent(out, rules, 'email', MASK_FNS, PATTERNS.email);
+  out = applyRuleIfPresent(out, rules, 'rrn', MASK_FNS, PATTERNS.rrn);
+  out = applyRuleIfPresent(out, rules, 'driver_license', MASK_FNS, PATTERNS.driverLicense);
+  out = applyRuleIfPresent(out, rules, 'biz_no', MASK_FNS, PATTERNS.bizNo);
+  out = applyRuleIfPresent(out, rules, 'card', MASK_FNS, PATTERNS.card);
   return out;
 }
 
 export function applyAnonymize(text: string, rules: AnonymizeRules | null | undefined): string {
   if (!rules || typeof rules !== 'object') return text;
   let out = text;
+  // 이름 — 문맥 필수 필터
   if (rules.name && ANON_FNS[rules.name]) {
     const fn = ANON_FNS[rules.name];
     out = out.replace(PATTERNS.krName, (match, offset, full) => {
@@ -191,17 +231,9 @@ export function applyAnonymize(text: string, rules: AnonymizeRules | null | unde
       return isLikelyKoreanName(match, before, after, full, offset) ? fn(match) : match;
     });
   }
-  if (rules.birthdate && ANON_FNS[rules.birthdate]) {
-    out = replaceByRule(out, 'birthdate', PATTERNS.birthdate, (m) => ANON_FNS[rules.birthdate!](m));
-  }
-  if (rules.phone && ANON_FNS[rules.phone]) {
-    out = replaceByRule(out, 'phone', PATTERNS.phone, (m) => ANON_FNS[rules.phone!](m));
-  }
-  if (rules.email && ANON_FNS[rules.email]) {
-    out = replaceByRule(out, 'email', PATTERNS.email, (m) => ANON_FNS[rules.email!](m));
-  }
-  if (rules.rrn && ANON_FNS[rules.rrn]) {
-    out = replaceByRule(out, 'rrn', PATTERNS.rrn, (m) => ANON_FNS[rules.rrn!](m));
-  }
+  out = applyRuleIfPresent(out, rules, 'birthdate', ANON_FNS, PATTERNS.birthdate);
+  out = applyRuleIfPresent(out, rules, 'phone', ANON_FNS, PATTERNS.phone);
+  out = applyRuleIfPresent(out, rules, 'email', ANON_FNS, PATTERNS.email);
+  out = applyRuleIfPresent(out, rules, 'rrn', ANON_FNS, PATTERNS.rrn);
   return out;
 }

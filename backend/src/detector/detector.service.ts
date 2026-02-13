@@ -62,13 +62,57 @@ export class DetectorService {
 
   private detectPII(text: string): DetectorHit {
     let count = 0;
-    // 이메일
-    const email = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+
+    // ① 주민등록번호 (RRN) — 7번째 자리 1~4 검증
+    const rrn = /\b\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[- ]?[1-4]\d{6}\b/g;
+    count += (text.match(rrn) ?? []).length;
+
+    // ② 휴대전화 (010/011/016/017/018/019)
+    const mobile = /\b01[016789][- ]?\d{3,4}[- ]?\d{4}\b/g;
+    count += (text.match(mobile) ?? []).length;
+
+    // ③ 일반전화 (지역번호 포함: 02-xxx, 031-xxxx 등)
+    const landline = /\b0\d{1,2}[- ]?\d{3,4}[- ]?\d{4}\b/g;
+    // 휴대폰과 중복 카운트 방지: 01x로 시작하지 않는 것만
+    const landlineMatches = (text.match(landline) ?? []).filter((m) => !/^01[016789]/.test(m));
+    count += landlineMatches.length;
+
+    // ④ 이메일
+    const email = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
     count += (text.match(email) ?? []).length;
-    // 한국 휴대폰 (010-xxxx-xxxx 등)
-    const krPhone = /01[0-9]-?[0-9]{3,4}-?[0-9]{4}/g;
-    count += (text.match(krPhone) ?? []).length;
-    // 한글 이름 (2~4글자) — 문맥 필수: 레이블/호칭/근처PII 없으면 무시
+
+    // ⑤ 여권번호 (M/S/R/O/D + 8자리) — "여권" 키워드 문맥 필요
+    const passport = /\b[MSROD]\d{8}\b/g;
+    const passportMatches = text.match(passport) ?? [];
+    if (passportMatches.length > 0 && /여권|passport/i.test(text)) {
+      count += passportMatches.length;
+    }
+
+    // ⑥ 운전면허번호 (11-12-123456-78)
+    const driverLicense = /\b\d{2}-\d{2}-\d{6}-\d{2}\b/g;
+    count += (text.match(driverLicense) ?? []).length;
+
+    // ⑦ 사업자등록번호 (123-45-67890)
+    const bizNo = /\b\d{3}-\d{2}-\d{5}\b/g;
+    count += (text.match(bizNo) ?? []).length;
+
+    // ⑧ 카드번호 (4-4-4-4)
+    const card = /\b(?:\d{4}[- ]?){3}\d{4}\b/g;
+    count += (text.match(card) ?? []).length;
+
+    // ⑨ 계좌번호 — "계좌/입금/은행/송금" 키워드 문맥 필요 (오탐 방지)
+    if (/계좌|입금|은행|송금|이체|출금/i.test(text)) {
+      const account = /\b\d{2,6}[- ]?\d{2,6}[- ]?\d{2,6}\b/g;
+      count += (text.match(account) ?? []).length;
+    }
+
+    // ⑩ 주소 (시·도 + 5자 이상 또는 동/호/층/번지 패턴)
+    const addrCity = /\b(?:서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)[^\n,]{5,}/g;
+    const addrDetail = /\d+(?:동\s*\d+호|\d*층|\d*번지)/g;
+    count += (text.match(addrCity) ?? []).length;
+    count += (text.match(addrDetail) ?? []).length;
+
+    // ⑪ 한글 이름 (2~4글자) — 문맥 필수: 레이블/호칭/근처PII 없으면 무시
     const krNameRe = /[가-힣]{2,4}(?=\s|,|\.|$|[0-9]|\)|\]|"|'|입니다|이에요|이라고)/g;
     let m: RegExpExecArray | null;
     while ((m = krNameRe.exec(text)) !== null) {
@@ -77,12 +121,7 @@ export class DetectorService {
       const nearbyText = text.slice(Math.max(0, m.index - 100), Math.min(text.length, m.index + m[0].length + 100));
       if (this.isLikelyKoreanName(m[0], before, after, nearbyText)) count++;
     }
-    // 주민등록번호 형식 (6-7자리, 마스킹된 것 포함)
-    const ssn = /\b[0-9]{6}-?[0-9Xx*]{7}\b/g;
-    count += (text.match(ssn) ?? []).length;
-    // 카드 번호 유사 (4-4-4-4 또는 16자리)
-    const card = /\b[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}\b/g;
-    count += (text.match(card) ?? []).length;
+
     return { type: 'PII', count, confidence: Math.min(100, count * 30) };
   }
 
