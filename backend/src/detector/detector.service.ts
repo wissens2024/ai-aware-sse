@@ -4,7 +4,6 @@ export type DetectorHit = { type: string; count: number; confidence?: number };
 
 /**
  * 한국 주요 성씨 (~100개, 인구 99%+ 커버).
- * 첫 글자가 이 Set에 포함된 2~4글자 한글만 이름 후보로 간주.
  */
 const KR_SURNAMES = new Set([
   '김','이','박','최','정','강','조','윤','장','임','한','오','서','신','권',
@@ -15,10 +14,13 @@ const KR_SURNAMES = new Set([
   '봉','편','경','복','피','범','승','태','함','빈','상','모',
 ]);
 
-/** 이름 뒤에 오는 호칭·직함 (문맥 보강) */
-const NAME_SUFFIX_RE = /(?=\s*(?:님|씨|과장|대리|부장|사원|팀장|선생|교수|박사|의원|이사|차장|실장|원장|센터장|소장|주임))/;
-/** 이름 앞에 오는 레이블 (문맥 보강) */
-const NAME_PREFIX_RE = /(?:이름|성명|담당자|작성자|신고자|고객|수신자|발신자|보호자|연락처\s*:?\s*[^\n]*?)\s*[:=]?\s*$/;
+/** 이름 뒤에 오는 호칭·직함 */
+const NAME_SUFFIX_RE = /^\s*(?:님|씨|과장|대리|부장|사원|팀장|선생|교수|박사|의원|이사|차장|실장|원장|센터장|소장|주임)/;
+/** 이름 앞에 오는 레이블 */
+const NAME_PREFIX_RE = /(?:이름|성명|담당자|작성자|신고자|수신자|발신자|보호자)\s*[:=]\s*$/;
+
+/** 확실한 PII 패턴 (이름 근처에 있으면 이름일 가능성 높음) */
+const HARD_PII_RE = /01[0-9]-?[0-9]{3,4}-?[0-9]{4}|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|\b[0-9]{6}-?[0-9]{7}\b/;
 
 /** 서버 측 규칙 기반 탐지 (PII / Secrets / Code). content_sample_masked 또는 텍스트에 대해 실행 */
 @Injectable()
@@ -40,16 +42,21 @@ export class DetectorService {
   }
 
   /**
-   * 한글 이름 후보가 실제 이름인지 판별.
-   * 조건 (하나 이상 충족):
-   *  1) 첫 글자가 한국 성씨 목록에 포함
-   *  2) 앞에 "이름:", "담당자:" 등 레이블 / 뒤에 "님", "씨" 등 호칭
+   * 한글 이름 판별 — 문맥 필수.
+   * 성씨 매칭만으로는 "현실적", "고객", "인형" 등 일반 단어를 걸러낼 수 없음.
+   * 반드시 다음 중 하나를 충족해야 이름으로 판정:
+   *  1) 앞에 "이름:", "담당자:" 등 레이블
+   *  2) 뒤에 "님", "씨", "과장" 등 호칭
+   *  3) 근처(±100자)에 확실한 PII(전화번호/이메일/주민번호)가 존재 + 성씨로 시작
    */
-  private isLikelyKoreanName(candidate: string, before: string, after: string): boolean {
+  private isLikelyKoreanName(candidate: string, before: string, after: string, nearbyText: string): boolean {
     if (/다$|요$/.test(candidate)) return false;
-    if (KR_SURNAMES.has(candidate[0])) return true;
+    // 조건 1: 앞에 레이블
     if (NAME_PREFIX_RE.test(before)) return true;
+    // 조건 2: 뒤에 호칭
     if (NAME_SUFFIX_RE.test(after)) return true;
+    // 조건 3: 성씨 + 근처에 확실한 PII 존재
+    if (KR_SURNAMES.has(candidate[0]) && HARD_PII_RE.test(nearbyText)) return true;
     return false;
   }
 
@@ -61,13 +68,14 @@ export class DetectorService {
     // 한국 휴대폰 (010-xxxx-xxxx 등)
     const krPhone = /01[0-9]-?[0-9]{3,4}-?[0-9]{4}/g;
     count += (text.match(krPhone) ?? []).length;
-    // 한글 이름 (2~4글자) — 성씨 사전 + 문맥 기반 필터링으로 오탐 감소
+    // 한글 이름 (2~4글자) — 문맥 필수: 레이블/호칭/근처PII 없으면 무시
     const krNameRe = /[가-힣]{2,4}(?=\s|,|\.|$|[0-9]|\)|\]|"|'|입니다|이에요|이라고)/g;
     let m: RegExpExecArray | null;
     while ((m = krNameRe.exec(text)) !== null) {
       const before = text.slice(Math.max(0, m.index - 30), m.index);
       const after = text.slice(m.index + m[0].length, Math.min(text.length, m.index + m[0].length + 10));
-      if (this.isLikelyKoreanName(m[0], before, after)) count++;
+      const nearbyText = text.slice(Math.max(0, m.index - 100), Math.min(text.length, m.index + m[0].length + 100));
+      if (this.isLikelyKoreanName(m[0], before, after, nearbyText)) count++;
     }
     // 주민등록번호 형식 (6-7자리, 마스킹된 것 포함)
     const ssn = /\b[0-9]{6}-?[0-9Xx*]{7}\b/g;

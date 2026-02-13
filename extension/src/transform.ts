@@ -9,7 +9,6 @@ export type AnonymizeRules = Record<string, string>;
 
 /**
  * 한국 주요 성씨 (~100개, 인구 99%+ 커버).
- * 첫 글자가 이 Set에 포함된 2~4글자 한글만 이름 후보로 간주.
  */
 const KR_SURNAMES = new Set([
   '김','이','박','최','정','강','조','윤','장','임','한','오','서','신','권',
@@ -21,13 +20,25 @@ const KR_SURNAMES = new Set([
 ]);
 
 /** 이름 뒤에 오는 호칭·직함 */
-const NAME_SUFFIX_RE = /^(\s*)(님|씨|과장|대리|부장|사원|팀장|선생|교수|박사|의원|이사|차장|실장|원장|주임)/;
+const NAME_SUFFIX_RE = /^\s*(?:님|씨|과장|대리|부장|사원|팀장|선생|교수|박사|의원|이사|차장|실장|원장|주임)/;
+/** 이름 앞에 오는 레이블 */
+const NAME_PREFIX_RE = /(?:이름|성명|담당자|작성자|신고자|수신자|발신자|보호자)\s*[:=]\s*$/;
+/** 확실한 PII 패턴 */
+const HARD_PII_RE = /01[0-9]-?[0-9]{3,4}-?[0-9]{4}|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|\b[0-9]{6}-?[0-9]{7}\b/;
 
-/** 한글 이름 후보가 실제 이름인지 판별 (성씨 사전 + 문맥) */
-function isLikelyKoreanName(candidate: string, after: string): boolean {
+/**
+ * 한글 이름 판별 — 문맥 필수.
+ * 성씨 매칭만으로는 "현실적", "고객", "인형" 등 오탐 불가피.
+ * 반드시: 레이블/호칭/근처PII 중 하나 충족해야 이름으로 판정.
+ */
+function isLikelyKoreanName(candidate: string, before: string, after: string, fullText: string, offset: number): boolean {
   if (/다$|요$/.test(candidate)) return false;
-  if (KR_SURNAMES.has(candidate[0])) return true;
+  if (NAME_PREFIX_RE.test(before)) return true;
   if (NAME_SUFFIX_RE.test(after)) return true;
+  if (KR_SURNAMES.has(candidate[0])) {
+    const nearby = fullText.slice(Math.max(0, offset - 100), Math.min(fullText.length, offset + candidate.length + 100));
+    if (HARD_PII_RE.test(nearby)) return true;
+  }
   return false;
 }
 
@@ -149,8 +160,9 @@ export function applyMask(text: string, rules: MaskRules | null | undefined): st
   if (rules.name && MASK_FNS[rules.name]) {
     const fn = MASK_FNS[rules.name];
     out = out.replace(PATTERNS.krName, (match, offset, full) => {
+      const before = full.slice(Math.max(0, offset - 30), offset);
       const after = full.slice(offset + match.length, offset + match.length + 10);
-      return isLikelyKoreanName(match, after) ? fn(match) : match;
+      return isLikelyKoreanName(match, before, after, full, offset) ? fn(match) : match;
     });
   }
   if (rules.birthdate && MASK_FNS[rules.birthdate]) {
@@ -174,8 +186,9 @@ export function applyAnonymize(text: string, rules: AnonymizeRules | null | unde
   if (rules.name && ANON_FNS[rules.name]) {
     const fn = ANON_FNS[rules.name];
     out = out.replace(PATTERNS.krName, (match, offset, full) => {
+      const before = full.slice(Math.max(0, offset - 30), offset);
       const after = full.slice(offset + match.length, offset + match.length + 10);
-      return isLikelyKoreanName(match, after) ? fn(match) : match;
+      return isLikelyKoreanName(match, before, after, full, offset) ? fn(match) : match;
     });
   }
   if (rules.birthdate && ANON_FNS[rules.birthdate]) {
