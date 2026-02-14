@@ -11,6 +11,12 @@ import Link from 'next/link';
 import { useLanguage } from '@/components/LanguageProvider';
 import { ChevronRight } from 'lucide-react';
 
+/** Date → 'YYYY-MM-DDTHH:mm' (로컬 타임존 기준) */
+function toLocalDatetimeStr(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function EventsPage() {
   const { t } = useLanguage();
   const [data, setData] = useState<EventSearchResponse | null>(null);
@@ -19,12 +25,12 @@ export default function EventsPage() {
     const d = new Date();
     d.setDate(d.getDate() - 30);
     d.setHours(0, 0, 0, 0);
-    return d.toISOString().slice(0, 16);
+    return toLocalDatetimeStr(d);
   });
   const [to, setTo] = useState(() => {
     const d = new Date();
     d.setHours(23, 59, 59, 999);
-    return d.toISOString().slice(0, 16);
+    return toLocalDatetimeStr(d);
   });
 
   useEffect(() => {

@@ -1,50 +1,101 @@
-# AI-Aware SSE Browser Extension (MVP)
+# AI-Aware SSE Extension
 
-Chrome Manifest V3 확장. AI 웹앱(chatgpt.com 등)에서 **paste / submit / upload_select** 이벤트를 가로채고, Backend에 decision 요청 후 **ALLOW / WARN / BLOCK / REQUIRE_APPROVAL** 로 UI 레벨 제어.
+Chrome MV3 확장 프로그램. AI 웹 서비스에서 텍스트/파일 전송 시 정책 기반 제어.
+
+- paste / submit / upload 이벤트 훅
+- 로컬 PII 탐지 + 마스킹/익명화
+- Backend 정책 판정 요청 → ALLOW / WARN / BLOCK / MASK / REQUIRE_APPROVAL UI
+
+---
+
+## 지원 사이트
+
+| 사이트 | 도메인 |
+|--------|--------|
+| ChatGPT | `chatgpt.com` |
+| Copilot | `copilot.microsoft.com` |
+| Gemini | `gemini.google.com` |
+| Claude | `claude.ai` |
+
+---
 
 ## 빌드
 
 ```bash
 pnpm install
-pnpm run build
+
+# 개발 (sourcemap, 로컬 API)
+pnpm run build:dev
+
+# 운영 (minify, 운영 API)
+pnpm run build:prod
 ```
 
-산출물: `dist/` 안에 `manifest.json`, `options.html`, `content.js`, `background.js`, `options.js`
+빌드 결과: `dist/` 폴더
 
-## 로드 방법
+### Chrome 로드
 
-1. Chrome에서 `chrome://extensions` 열기
-2. "개발자 모드" 켜기
-3. "압축 해제된 확장 프로그램을 로드합니다" → **`extension/dist`** 폴더 선택  
-   - `dist` 안에 `manifest.json`이 있으므로 **`dist`** 폴더만 로드하면 됨
+1. `chrome://extensions` → "개발자 모드" 켜기
+2. "압축해제된 확장 프로그램을 로드합니다" → `extension/dist` 선택
 
-## 설정
+### 설정
 
-- 확장 프로그램 카드에서 "옵션" 클릭 → **API Base URL** (`http://localhost:8080/api/v1`), **Device Token** (backend `.env`의 `EXT_DEVICE_TOKEN`과 동일, 예: `devtoken-123`) 입력 후 저장.
+확장 프로그램 카드 → "옵션" → API Base URL, Device Token 입력 후 저장.
 
-## 동작 요약
+### 빌드 모드별 차이
+
+| | development | production |
+|---|---|---|
+| API_BASE | `http://localhost:8080/api/v1` | `https://sse.aines.kr/api/v1` |
+| DEVICE_TOKEN | `devtoken-123` | (옵션 페이지에서 설정) |
+| Sourcemap | O | X |
+| Minify | X | O |
+
+---
+
+## 동작
 
 | 이벤트 | 훅 | 제어 |
 |--------|-----|------|
-| **paste** | `document.addEventListener('paste', ..., true)` | clipboard 텍스트 → decision 요청 → ALLOW면 삽입, BLOCK/WARN/REQUIRE_APPROVAL면 모달 |
-| **submit** | 전송 버튼 클릭 + Enter 키 | 입력 텍스트 → decision 요청 → ALLOW면 전송, 아니면 모달 (계속 진행 / 승인 요청) |
-| **upload_select** | `input[type=file]` change | 파일 메타만 전송 → BLOCK이면 선택 취소 + 모달 |
+| **paste** | `document paste` 캡처 | 클립보드 텍스트 → 정책 판정 → ALLOW면 삽입, 아니면 모달 |
+| **submit** | 전송 버튼 클릭 + Enter | 입력 텍스트 → 정책 판정 → ALLOW면 전송, 아니면 모달 |
+| **upload** | `input[type=file]` change | 파일 메타 → 정책 판정 → BLOCK이면 선택 취소 + 모달 |
 
-## MVP 성공 기준 (chatgpt.com)
+---
 
-- [x] paste 시 차단/경고 시 모달, ALLOW 시 붙여넣기
-- [x] submit 시 차단/경고 시 모달, ALLOW 시 전송
-- [x] upload_select 시 파일 메타 전송, 승인 요청 버튼
-- [x] decision 요청 시 DB에 event/decision 기록
-- [x] REQUIRE_APPROVAL 또는 BLOCK+승인요청 → case 생성 → Admin에서 승인 → (재시도 시 수동으로 다시 시도)
+## 파일 구조
 
-## 개발 흐름
+```
+extension/
+├── manifest.json           # Chrome MV3 매니페스트
+├── build.mjs               # esbuild 빌드 스크립트
+├── options.html            # 옵션 페이지 HTML
+├── icons/                  # 확장 아이콘 (16/48/128)
+└── src/
+    ├── content.ts          # Content Script (이벤트 훅 + 탐지 + 정책 요청)
+    ├── background.ts       # Service Worker
+    ├── options.ts          # 옵션 페이지 (토큰 설정)
+    ├── api.ts              # Backend API 통신
+    ├── modal.ts            # WARN/BLOCK/APPROVAL 모달 UI
+    ├── transform.ts        # PII 마스킹/익명화 (12종 패턴)
+    ├── site-config.ts      # 사이트별 DOM 선택자 설정
+    └── config.ts           # 환경 설정
+```
 
-1. DB up, backend up (`cd backend && pnpm run start:dev`)
-2. `cd extension && pnpm run build`
-3. Chrome 확장 프로그램 새로고침
-4. chatgpt.com 접속 후 붙여넣기/전송/파일 선택으로 동작 확인
+---
 
-## 테스트 시나리오
+## 마스킹
 
-기능별·순서별 체크 항목은 **`docs/EXTENSION_TEST_SCENARIOS.md`** 참고.
+`transform.ts`에서 정책 룰에 따라 텍스트를 변환. 상세: [루트 README](../README.md) 참조.
+
+| 유형 | 마스킹 예시 |
+|------|------------|
+| 이름 | `홍**` |
+| 전화번호 | `010-****-5678` |
+| 일반전화 | `02-****-5678` |
+| 이메일 | `user@***.***` |
+| 주민등록번호 | `900101-*******` |
+| 운전면허 | `11-**-******-**` |
+| 사업자등록번호 | `123-**-*****` |
+| 카드번호 | `1234-****-****-3456` |
+| 생년월일 | `1990-**-**` |
