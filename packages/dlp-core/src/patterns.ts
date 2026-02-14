@@ -55,6 +55,13 @@ export interface PatternDef {
 }
 
 // ──────────────────────────────────────────────
+// 경계 매칭 — 숫자 시퀀스용
+// ──────────────────────────────────────────────
+// \b 는 \w↔\W 경계만 감지하므로 digit-digit 경계를 구분 못 함.
+// 더 긴 숫자열 내 부분 매칭을 방지하기 위해
+// 숫자 패턴에는 (?<!\d) / (?!\d) lookaround 사용.
+
+// ──────────────────────────────────────────────
 // 한글 이름 검증 함수
 // ──────────────────────────────────────────────
 
@@ -95,7 +102,7 @@ export const PII_PATTERNS: PatternDef[] = [
     type: 'PII_RRN',
     category: 'PII',
     confidence: 'high',
-    regex: () => /\b(\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01]))[- ]?([1-4]\d{6})\b/g,
+    regex: () => /(?<!\d)(\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01]))[- ]?([1-4]\d{6})(?!\d)/g,
     preMask: (m) => {
       const digits = m.replace(/[- ]/g, '');
       return digits.slice(0, 6) + '-*******';
@@ -107,7 +114,7 @@ export const PII_PATTERNS: PatternDef[] = [
     type: 'PII_MOBILE',
     category: 'PII',
     confidence: 'high',
-    regex: () => /\b01[016789][- ]?\d{3,4}[- ]?\d{4}\b/g,
+    regex: () => /(?<!\d)01[016789][- ]?\d{3,4}[- ]?\d{4}(?!\d)/g,
     preMask: (m) => {
       const d = m.replace(/[- ]/g, '');
       return d.slice(0, 3) + '-****-' + d.slice(-4);
@@ -119,7 +126,7 @@ export const PII_PATTERNS: PatternDef[] = [
     type: 'PII_PHONE',
     category: 'PII',
     confidence: 'medium',
-    regex: () => /\b0\d{1,2}[- ]?\d{3,4}[- ]?\d{4}\b/g,
+    regex: () => /(?<!\d)0\d{1,2}[- ]?\d{3,4}[- ]?\d{4}(?!\d)/g,
     validate: (m) => !/^01[016789]/.test(m),
     preMask: (m) => {
       const d = m.replace(/[- ]/g, '');
@@ -133,7 +140,7 @@ export const PII_PATTERNS: PatternDef[] = [
     type: 'PII_EMAIL',
     category: 'PII',
     confidence: 'high',
-    regex: () => /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
+    regex: () => /(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
     preMask: (m) => {
       const at = m.indexOf('@');
       return m.slice(0, at) + '@***.***';
@@ -145,7 +152,7 @@ export const PII_PATTERNS: PatternDef[] = [
     type: 'PII_PASSPORT',
     category: 'PII',
     confidence: 'medium',
-    regex: () => /\b[MSROD]\d{8}\b/g,
+    regex: () => /\b[MSROD]\d{8}(?!\d)/g,
     validate: (_m, ctx) => /여권|passport/i.test(ctx.fullText),
     preMask: (m) => m[0] + '********',
     reasonLabel: 'keyword_passport',
@@ -156,7 +163,7 @@ export const PII_PATTERNS: PatternDef[] = [
     type: 'PII_DRIVER',
     category: 'PII',
     confidence: 'high',
-    regex: () => /\b\d{2}-\d{2}-\d{6}-\d{2}\b/g,
+    regex: () => /(?<!\d)\d{2}-\d{2}-\d{6}-\d{2}(?!\d)/g,
     preMask: (m) => m.slice(0, 2) + '-**-******-**',
   },
 
@@ -165,7 +172,7 @@ export const PII_PATTERNS: PatternDef[] = [
     type: 'PII_BIZNO',
     category: 'PII',
     confidence: 'high',
-    regex: () => /\b\d{3}-\d{2}-\d{5}\b/g,
+    regex: () => /(?<!\d)\d{3}-\d{2}-\d{5}(?!\d)/g,
     preMask: (m) => m.slice(0, 3) + '-**-*****',
   },
 
@@ -174,7 +181,7 @@ export const PII_PATTERNS: PatternDef[] = [
     type: 'PII_CARD',
     category: 'PII',
     confidence: 'high',
-    regex: () => /\b(\d{4})[- ]?(\d{4})[- ]?(\d{4})[- ]?(\d{4})\b/g,
+    regex: () => /(?<!\d)(\d{4})[- ]?(\d{4})[- ]?(\d{4})[- ]?(\d{4})(?!\d)/g,
     validate: (m) => {
       const digits = m.replace(/[- ]/g, '');
       if (digits.length !== 16) return false;
@@ -198,7 +205,7 @@ export const PII_PATTERNS: PatternDef[] = [
     type: 'PII_ACCOUNT',
     category: 'PII',
     confidence: 'medium',
-    regex: () => /\b\d{2,6}[- ]\d{2,6}[- ]\d{2,8}\b/g,
+    regex: () => /(?<!\d)\d{2,6}[- ]\d{2,6}[- ]\d{2,8}(?!\d)/g,
     validate: (_m, ctx) => /계좌|은행|송금|입금|이체|출금|국민|신한|우리|하나|농협|기업|SC|씨티/i.test(ctx.nearby),
     preMask: (m) => {
       const parts = m.split(/[- ]/);
@@ -238,7 +245,7 @@ export const PII_PATTERNS: PatternDef[] = [
     type: 'PII_DOB',
     category: 'PII',
     confidence: 'medium',
-    regex: () => /\b(19|20)\d{2}[.-](0[1-9]|1[0-2])[.-](0[1-9]|[12]\d|3[01])\b/g,
+    regex: () => /(?<!\d)(19|20)\d{2}[.-](0[1-9]|1[0-2])[.-](0[1-9]|[12]\d|3[01])(?!\d)/g,
     preMask: (m) => {
       const parts = m.split(/[.-]/);
       return parts[0] + '-**-**';
@@ -283,7 +290,7 @@ export const SECRET_PATTERNS: PatternDef[] = [
     type: 'SECRET_AWS',
     category: 'SECRET',
     confidence: 'high',
-    regex: () => /(?:AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}/g,
+    regex: () => /\b(?:AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}(?![A-Z0-9])/g,
     preMask: (m) => m.slice(0, 4) + '****************',
   },
 
