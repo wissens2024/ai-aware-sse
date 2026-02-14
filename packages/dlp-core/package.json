@@ -1,0 +1,14 @@
+{
+  "name": "dlp-core",
+  "version": "1.0.0",
+  "description": "Shared DLP detection, masking, and profile engine for AI-Aware SSE",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:watch": "tsc -p tsconfig.json --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

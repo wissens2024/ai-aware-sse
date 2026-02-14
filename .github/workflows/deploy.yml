@@ -6,6 +6,7 @@ on:
     paths:
       - 'backend/**'
       - 'frontend-admin/**'
+      - 'packages/**'
       - 'docker-compose.yml'
       - 'initdb/**'
       - '.github/workflows/**'
@@ -23,24 +24,21 @@ jobs:
 
       - id: changes
         run: |
-          # Get changed files between previous and current commit
           CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
 
-          # Workflow file changed → deploy both
-          if echo "$CHANGED" | grep -qE '^\.github/workflows/'; then
+          # Workflow or shared package changed → deploy both
+          if echo "$CHANGED" | grep -qE '^(\.github/workflows/|packages/)'; then
             echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "frontend=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # Check if backend-related files changed
           if echo "$CHANGED" | grep -qE '^(backend/|docker-compose\.yml|initdb/)'; then
             echo "backend=true" >> "$GITHUB_OUTPUT"
           else
             echo "backend=false" >> "$GITHUB_OUTPUT"
           fi
 
-          # Check if frontend-related files changed
           if echo "$CHANGED" | grep -qE '^(frontend-admin/|docker-compose\.yml)'; then
             echo "frontend=true" >> "$GITHUB_OUTPUT"
           else
@@ -64,8 +62,9 @@ jobs:
             export PATH="$HOME/.local/share/pnpm:$HOME/.npm-global/bin:$PATH"
             cd /home/ju/sase/ai-aware-sse
             git pull origin main
+            pnpm install
+            cd packages/dlp-core && pnpm run build && cd ../..
             cd backend
-            pnpm install --frozen-lockfile
             npx prisma generate
             pnpm run build
             pm2 restart sse-backend
@@ -87,7 +86,7 @@ jobs:
             export PATH="$HOME/.local/share/pnpm:$HOME/.npm-global/bin:$PATH"
             cd /home/ju/sase/ai-aware-sse
             git pull origin main
+            pnpm install
             cd frontend-admin
-            pnpm install --frozen-lockfile
             pnpm run build
             pm2 restart sse-frontend

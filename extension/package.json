@@ -8,6 +8,9 @@
     "build:prod": "node build.mjs --mode=production",
     "watch": "node build.mjs --mode=development --watch"
   },
+  "dependencies": {
+    "dlp-core": "workspace:*"
+  },
   "devDependencies": {
     "@types/chrome": "^0.0.260",
     "esbuild": "^0.24.0",
