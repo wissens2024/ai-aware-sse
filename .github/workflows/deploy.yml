@@ -91,4 +91,4 @@ jobs:
             pnpm install
             cd frontend-admin
             pnpm run build
-            pm2 restart sse-frontend || pm2 start node_modules/.bin/next --name sse-frontend -- start -p 3000
+            pm2 restart sse-frontend || pm2 start node_modules/next/dist/bin/next --name sse-frontend -- start --port 3000
