@@ -68,7 +68,8 @@ jobs:
             cd backend
             npx prisma generate
             pnpm run build
-            pm2 restart sse-backend || pm2 start dist/main.js --name sse-backend
+            pm2 delete sse-backend 2>/dev/null || true
+            pm2 start dist/main.js --name sse-backend
 
   deploy-frontend:
     needs: detect-changes
@@ -91,4 +92,5 @@ jobs:
             pnpm install
             cd frontend-admin
             pnpm run build
-            pm2 restart sse-frontend || pm2 start node_modules/next/dist/bin/next --name sse-frontend -- start --port 3000
+            pm2 delete sse-frontend 2>/dev/null || true
+            pm2 start node_modules/next/dist/bin/next --name sse-frontend -- start --port 3000
