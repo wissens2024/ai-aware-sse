@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "scripts": {
+    "build:core": "pnpm --filter dlp-core build",
+    "build:backend": "pnpm --filter dlp-core build && pnpm --filter backend build",
+    "build:extension": "pnpm --filter dlp-core build && pnpm --filter extension build",
+    "build:all": "pnpm --filter dlp-core build && pnpm --filter backend build && pnpm --filter extension build"
+  }
+}

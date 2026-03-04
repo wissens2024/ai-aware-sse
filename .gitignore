@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+tsconfig.tsbuildinfo
+
+# Prisma generated client
+backend/generated/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.sublime-workspace
+
+# Docker volumes
+pgdata/
+
+# Archives
+*.tar.gz
+*.zip
+
+# Coverage
+coverage/
+
+# Claude Code local settings
+.claude/
+
+# Misc
+nul

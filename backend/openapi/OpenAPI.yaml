@@ -1,0 +1,1449 @@
+openapi: 3.0.3
+info:
+  title: AI-Aware SSE MVP API
+  version: "0.1.0"
+  description: >
+    AI-Aware SSE MVP OpenAPI spec.
+    - /extension/* : Browser Extension -> Backend (device token bearer recommended for MVP)
+    - /admin/*     : Admin Console -> Backend (OIDC access token bearer)
+servers:
+  - url: /api/v1
+
+tags:
+  - name: Extension
+  - name: Admin
+  - name: Health
+
+paths:
+  /extension/decision-requests:
+    post:
+      tags: [Extension]
+      summary: Evaluate a decision for an extension event (paste/submit/upload)
+      operationId: createDecisionRequest
+      security:
+        - extBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionRequest"
+      responses:
+        "200":
+          description: Decision response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecisionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /extension/user-actions:
+    post:
+      tags: [Extension]
+      summary: Record user follow-up actions (warn continue/cancel, mask applied, etc.)
+      operationId: createUserAction
+      security:
+        - extBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserActionRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /extension/approval-cases:
+    post:
+      tags: [Extension]
+      summary: Create an approval case from a blocked/approval-required decision
+      operationId: createApprovalCase
+      security:
+        - extBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApprovalCaseRequest"
+      responses:
+        "200":
+          description: Created approval case
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalCaseResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /extension/approval-cases/{case_id}:
+    get:
+      tags: [Extension]
+      summary: Get approval case status (polling)
+      operationId: getApprovalCase
+      security:
+        - extBearerAuth: []
+      parameters:
+        - name: case_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Approval case status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalCaseStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /extension/ping:
+    get:
+      tags: [Health]
+      summary: Extension health ping
+      operationId: extensionPing
+      security:
+        - extBearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PingResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /admin/dashboard/summary:
+    get:
+      tags: [Admin]
+      summary: Dashboard summary metrics
+      operationId: getDashboardSummary
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: ISO8601 datetime (inclusive)
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          description: ISO8601 datetime (exclusive)
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummaryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/events:
+    get:
+      tags: [Admin]
+      summary: Search events
+      operationId: searchEvents
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: date-time }
+        - name: domain
+          in: query
+          required: false
+          schema: { type: string }
+        - name: decision
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Outcome"
+        - name: user
+          in: query
+          required: false
+          description: user email (exact or partial, implementation-defined)
+          schema: { type: string }
+        - name: group
+          in: query
+          required: false
+          schema: { type: string }
+        - name: detector
+          in: query
+          required: false
+          schema: { type: string }
+        - name: q
+          in: query
+          required: false
+          description: search within safe fields only (masked sample / summaries)
+          schema: { type: string }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 500, default: 50 }
+      responses:
+        "200":
+          description: Event list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventSearchResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/events/{event_id}:
+    get:
+      tags: [Admin]
+      summary: Get event details
+      operationId: getEventDetail
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Event detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/approvals:
+    get:
+      tags: [Admin]
+      summary: List approval cases
+      operationId: listApprovals
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ApprovalStatus"
+        - name: from
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 500, default: 50 }
+      responses:
+        "200":
+          description: Approval cases
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/approvals/{case_id}/decide:
+    post:
+      tags: [Admin]
+      summary: Decide an approval case (approve/reject/conditional)
+      operationId: decideApproval
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - name: case_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalDecideRequest"
+      responses:
+        "200":
+          description: Updated approval case
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalDecideResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/policies:
+    get:
+      tags: [Admin]
+      summary: List policies
+      operationId: listPolicies
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - name: enabled
+          in: query
+          required: false
+          schema: { type: boolean }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 500, default: 50 }
+      responses:
+        "200":
+          description: Policies
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    post:
+      tags: [Admin]
+      summary: Create a policy
+      operationId: createPolicy
+      security:
+        - adminBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PolicyUpsertRequest"
+      responses:
+        "200":
+          description: Created policy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/policies/{policy_id}:
+    get:
+      tags: [Admin]
+      summary: Get a policy
+      operationId: getPolicy
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - name: policy_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Policy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    put:
+      tags: [Admin]
+      summary: Update a policy (increments version)
+      operationId: updatePolicy
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - name: policy_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PolicyUpsertRequest"
+      responses:
+        "200":
+          description: Updated policy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/policies/{policy_id}/disable:
+    post:
+      tags: [Admin]
+      summary: Disable a policy
+      operationId: disablePolicy
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - name: policy_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PolicyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/detectors:
+    get:
+      tags: [Admin]
+      summary: List detector configs
+      operationId: listDetectors
+      security:
+        - adminBearerAuth: []
+      responses:
+        "200":
+          description: Detector configs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DetectorListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/detectors/{detector_id}:
+    put:
+      tags: [Admin]
+      summary: Update a detector config
+      operationId: updateDetector
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - name: detector_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DetectorUpsertRequest"
+      responses:
+        "200":
+          description: Updated detector config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DetectorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/apps:
+    get:
+      tags: [Admin]
+      summary: List apps/domains
+      operationId: listApps
+      security:
+        - adminBearerAuth: []
+      responses:
+        "200":
+          description: Apps
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    post:
+      tags: [Admin]
+      summary: Create an app/domain entry
+      operationId: createApp
+      security:
+        - adminBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppUpsertRequest"
+      responses:
+        "200":
+          description: Created app
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/apps/{app_id}:
+    put:
+      tags: [Admin]
+      summary: Update an app/domain entry
+      operationId: updateApp
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - name: app_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppUpsertRequest"
+      responses:
+        "200":
+          description: Updated app
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: List users (MVP: snapshot-based)
+      operationId: listUsers
+      security:
+        - adminBearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 500, default: 50 }
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /admin/users/import:
+    post:
+      tags: [Admin]
+      summary: Import users/groups (MVP convenience)
+      operationId: importUsers
+      security:
+        - adminBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserImportRequest"
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserImportResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+  securitySchemes:
+    extBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Extension device token bearer (MVP)
+    adminBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Admin OIDC access token bearer
+
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: AUTH_INVALID_TOKEN
+              message: Invalid token
+              trace_id: ext-uuid-123
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: NOT_FOUND
+              message: Resource not found
+              trace_id: ext-uuid-123
+    UnprocessableEntity:
+      description: Unprocessable Entity
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: PAYLOAD_INVALID
+              message: Invalid payload
+              trace_id: ext-uuid-123
+    TooManyRequests:
+      description: Too Many Requests
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: RATE_LIMITED
+              message: Too many requests
+              trace_id: ext-uuid-123
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: INTERNAL
+              message: Unexpected error
+              trace_id: ext-uuid-123
+
+  schemas:
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
+
+    PingResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        server_time: { type: string, format: date-time }
+        version: { type: string }
+      required: [ok, server_time, version]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            trace_id: { type: string }
+          required: [code, message]
+      required: [error]
+
+    EventType:
+      type: string
+      enum: [TYPE, PASTE, SUBMIT, UPLOAD_SELECT, UPLOAD_SUBMIT]
+
+    Outcome:
+      type: string
+      enum: [ALLOW, WARN, BLOCK, MASK, REQUIRE_APPROVAL]
+
+    ApprovalStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED, EXPIRED, CANCELLED]
+
+    ContentKind:
+      type: string
+      enum: [TEXT, FILE_META]
+
+    Hashes:
+      type: object
+      properties:
+        sha256: { type: string }
+      additionalProperties: false
+
+    AppRef:
+      type: object
+      properties:
+        domain: { type: string }
+        url: { type: string }
+        app_id_hint: { type: string, nullable: true }
+      required: [domain, url]
+
+    PageContext:
+      type: object
+      properties:
+        path: { type: string, nullable: true }
+        title: { type: string, nullable: true }
+        workspace_hint: { type: string, nullable: true }
+
+    UserHint:
+      type: object
+      properties:
+        email: { type: string, format: email, nullable: true }
+        display_name: { type: string, nullable: true }
+        groups:
+          type: array
+          items: { type: string }
+      required: [groups]
+
+    DeviceInfo:
+      type: object
+      properties:
+        device_id: { type: string, nullable: true }
+        os: { type: string, nullable: true }
+        browser: { type: string, nullable: true }
+        extension_version: { type: string, nullable: true }
+
+    NetworkInfo:
+      type: object
+      properties:
+        public_ip: { type: string, nullable: true }
+        country: { type: string, nullable: true }
+
+    Actor:
+      type: object
+      properties:
+        user_hint:
+          $ref: "#/components/schemas/UserHint"
+        device:
+          $ref: "#/components/schemas/DeviceInfo"
+        network:
+          $ref: "#/components/schemas/NetworkInfo"
+      required: [user_hint, device]
+
+    LocalDetectorHit:
+      type: object
+      properties:
+        type: { type: string }
+        count: { type: integer, minimum: 0 }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+      required: [type, count]
+
+    Content:
+      type: object
+      properties:
+        kind:
+          $ref: "#/components/schemas/ContentKind"
+        length:
+          type: integer
+          minimum: 0
+        hashes:
+          $ref: "#/components/schemas/Hashes"
+          nullable: true
+        sample_masked:
+          type: string
+          nullable: true
+          description: Masked short sample, capped server-side
+        local_detectors:
+          type: array
+          items:
+            $ref: "#/components/schemas/LocalDetectorHit"
+      required: [kind, length, local_detectors]
+
+    FileMeta:
+      type: object
+      properties:
+        name: { type: string }
+        size_bytes: { type: integer, minimum: 0 }
+        mime: { type: string, nullable: true }
+        ext: { type: string, nullable: true }
+        hashes:
+          $ref: "#/components/schemas/Hashes"
+          nullable: true
+      required: [name, size_bytes]
+
+    DecisionRequestEvent:
+      type: object
+      properties:
+        type:
+          $ref: "#/components/schemas/EventType"
+        occurred_at:
+          type: string
+          format: date-time
+        app:
+          $ref: "#/components/schemas/AppRef"
+        page_context:
+          $ref: "#/components/schemas/PageContext"
+      required: [type, occurred_at, app]
+
+    DecisionRequest:
+      type: object
+      properties:
+        trace_id:
+          type: string
+        event:
+          $ref: "#/components/schemas/DecisionRequestEvent"
+        actor:
+          $ref: "#/components/schemas/Actor"
+        content:
+          $ref: "#/components/schemas/Content"
+        file:
+          $ref: "#/components/schemas/FileMeta"
+          nullable: true
+        schema_version:
+          type: integer
+          default: 1
+      required: [trace_id, event, actor, content]
+
+    MatchedPolicy:
+      type: object
+      properties:
+        policy_id: { type: string }
+        name: { type: string }
+        priority: { type: integer }
+        version: { type: integer }
+      required: [policy_id, name, priority, version]
+
+    DetectorHit:
+      type: object
+      properties:
+        type: { type: string }
+        count: { type: integer, minimum: 0 }
+        evidence: { type: string, nullable: true }
+      required: [type, count]
+
+    Explanation:
+      type: object
+      properties:
+        summary: { type: string }
+        safe_details:
+          type: array
+          items: { type: string }
+      required: [summary]
+
+    DecisionAction:
+      type: object
+      properties:
+        type:
+          $ref: "#/components/schemas/Outcome"
+        message:
+          type: string
+          nullable: true
+        allow_approval_request:
+          type: boolean
+          nullable: true
+        mask:
+          type: object
+          nullable: true
+          properties:
+            strategy:
+              type: string
+              enum: [REDACT]
+            fields:
+              type: array
+              items: { type: string }
+      required: [type]
+
+    DecisionResponseNext:
+      type: object
+      properties:
+        approval:
+          type: object
+          nullable: true
+          properties:
+            supported: { type: boolean }
+            approver_group: { type: string, nullable: true }
+            ttl_seconds: { type: integer, nullable: true }
+          required: [supported]
+
+    DecisionResponse:
+      type: object
+      properties:
+        decision_id: { type: string }
+        event_id: { type: string }
+        outcome:
+          $ref: "#/components/schemas/Outcome"
+        action:
+          $ref: "#/components/schemas/DecisionAction"
+        risk_score: { type: integer, minimum: 0, maximum: 100 }
+        matched_policy:
+          $ref: "#/components/schemas/MatchedPolicy"
+          nullable: true
+        detector_hits:
+          type: array
+          items:
+            $ref: "#/components/schemas/DetectorHit"
+        explanation:
+          $ref: "#/components/schemas/Explanation"
+        next:
+          $ref: "#/components/schemas/DecisionResponseNext"
+          nullable: true
+      required: [decision_id, event_id, outcome, action, risk_score, detector_hits, explanation]
+
+    UserActionType:
+      type: string
+      enum: [WARN_CONTINUE, WARN_CANCEL, MASK_APPLIED, APPROVAL_REQUESTED]
+
+    UserAction:
+      type: object
+      properties:
+        type:
+          $ref: "#/components/schemas/UserActionType"
+        user_reason:
+          type: string
+          nullable: true
+        masked_applied:
+          type: boolean
+          nullable: true
+      required: [type]
+
+    UserActionRequest:
+      type: object
+      properties:
+        event_id: { type: string }
+        decision_id: { type: string }
+        trace_id: { type: string }
+        action:
+          $ref: "#/components/schemas/UserAction"
+        occurred_at: { type: string, format: date-time }
+      required: [event_id, decision_id, trace_id, action, occurred_at]
+
+    CreateApprovalCaseRequest:
+      type: object
+      properties:
+        event_id: { type: string }
+        decision_id: { type: string }
+        request_reason: { type: string, nullable: true }
+        requested_at: { type: string, format: date-time }
+      required: [event_id, decision_id, requested_at]
+
+    ApprovalCaseResponse:
+      type: object
+      properties:
+        case_id: { type: string }
+        status:
+          $ref: "#/components/schemas/ApprovalStatus"
+        expires_at: { type: string, format: date-time, nullable: true }
+      required: [case_id, status]
+
+    ConditionalApprovalConditions:
+      type: object
+      properties:
+        require_mask: { type: boolean, nullable: true }
+        max_chars: { type: integer, nullable: true, minimum: 1 }
+      additionalProperties: false
+
+    ApprovalCaseStatusResponse:
+      type: object
+      properties:
+        case_id: { type: string }
+        status:
+          $ref: "#/components/schemas/ApprovalStatus"
+        decision:
+          type: object
+          nullable: true
+          properties:
+            type:
+              type: string
+              enum: [APPROVE, REJECT, CONDITIONAL_APPROVAL]
+            conditions:
+              $ref: "#/components/schemas/ConditionalApprovalConditions"
+              nullable: true
+            comment:
+              type: string
+              nullable: true
+          required: [type]
+        updated_at:
+          type: string
+          format: date-time
+      required: [case_id, status, updated_at]
+
+    DashboardSummaryResponse:
+      type: object
+      properties:
+        metrics:
+          type: object
+          properties:
+            events_total: { type: integer, minimum: 0 }
+            blocked: { type: integer, minimum: 0 }
+            warned: { type: integer, minimum: 0 }
+            masked: { type: integer, minimum: 0 }
+            approval_pending: { type: integer, minimum: 0 }
+          required: [events_total, blocked, warned, masked, approval_pending]
+        top_apps:
+          type: array
+          items:
+            type: object
+            properties:
+              domain: { type: string }
+              events: { type: integer, minimum: 0 }
+              blocked: { type: integer, minimum: 0 }
+            required: [domain, events, blocked]
+        top_detectors:
+          type: array
+          items:
+            type: object
+            properties:
+              type: { type: string }
+              hits: { type: integer, minimum: 0 }
+            required: [type, hits]
+      required: [metrics, top_apps, top_detectors]
+
+    EventListItem:
+      type: object
+      properties:
+        event_id: { type: string }
+        time: { type: string, format: date-time }
+        user:
+          type: object
+          properties:
+            email: { type: string, format: email, nullable: true }
+            groups:
+              type: array
+              items: { type: string }
+          required: [groups]
+        app:
+          type: object
+          properties:
+            domain: { type: string }
+          required: [domain]
+        event_type:
+          $ref: "#/components/schemas/EventType"
+        decision:
+          $ref: "#/components/schemas/Outcome"
+        risk_score: { type: integer, minimum: 0, maximum: 100 }
+        case_id: { type: string, nullable: true }
+      required: [event_id, time, user, app, event_type, decision, risk_score]
+
+    EventSearchResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventListItem"
+        next_cursor:
+          type: string
+          nullable: true
+      required: [items]
+
+    EventDetailResponse:
+      type: object
+      properties:
+        event:
+          type: object
+          properties:
+            event_id: { type: string }
+            time: { type: string, format: date-time }
+            app:
+              type: object
+              properties:
+                domain: { type: string }
+                url: { type: string, nullable: true }
+              required: [domain]
+            actor:
+              type: object
+              properties:
+                email: { type: string, format: email, nullable: true }
+                groups:
+                  type: array
+                  items: { type: string }
+                device_id: { type: string, nullable: true }
+              required: [groups]
+            content_meta:
+              type: object
+              properties:
+                kind: { $ref: "#/components/schemas/ContentKind" }
+                length: { type: integer, minimum: 0 }
+                sha256: { type: string, nullable: true }
+              required: [kind, length]
+            content_sample_masked:
+              type: string
+              nullable: true
+          required: [event_id, time, app, actor, content_meta]
+        decision:
+          type: object
+          properties:
+            outcome: { $ref: "#/components/schemas/Outcome" }
+            matched_policy:
+              $ref: "#/components/schemas/MatchedPolicy"
+              nullable: true
+            detector_hits:
+              type: array
+              items: { $ref: "#/components/schemas/DetectorHit" }
+            explanation:
+              $ref: "#/components/schemas/Explanation"
+          required: [outcome, detector_hits, explanation]
+        approval_case:
+          type: object
+          nullable: true
+          properties:
+            case_id: { type: string }
+            status: { $ref: "#/components/schemas/ApprovalStatus" }
+          required: [case_id, status]
+        audit_trail:
+          type: array
+          items:
+            type: object
+            properties:
+              time: { type: string, format: date-time }
+              actor: { type: string }
+              action: { type: string }
+            required: [time, actor, action]
+      required: [event, decision, audit_trail]
+
+    ApprovalListItem:
+      type: object
+      properties:
+        case_id: { type: string }
+        event_id: { type: string }
+        requested_at: { type: string, format: date-time }
+        requested_by:
+          type: object
+          properties:
+            email: { type: string, format: email, nullable: true }
+            groups:
+              type: array
+              items: { type: string }
+          required: [groups]
+        app:
+          type: object
+          properties:
+            domain: { type: string }
+          required: [domain]
+        summary:
+          type: object
+          properties:
+            risk_score: { type: integer, minimum: 0, maximum: 100 }
+            detectors:
+              type: array
+              items: { type: string }
+          required: [risk_score, detectors]
+        expires_at: { type: string, format: date-time, nullable: true }
+        status: { $ref: "#/components/schemas/ApprovalStatus" }
+      required: [case_id, event_id, requested_at, requested_by, app, summary, status]
+
+    ApprovalListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ApprovalListItem" }
+        next_cursor:
+          type: string
+          nullable: true
+      required: [items]
+
+    ApprovalDecideRequest:
+      type: object
+      properties:
+        decision:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [APPROVE, REJECT, CONDITIONAL_APPROVAL]
+            conditions:
+              $ref: "#/components/schemas/ConditionalApprovalConditions"
+              nullable: true
+            comment:
+              type: string
+              nullable: true
+          required: [type]
+      required: [decision]
+
+    ApprovalDecideResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        case_id: { type: string }
+        status: { $ref: "#/components/schemas/ApprovalStatus" }
+        updated_at: { type: string, format: date-time }
+      required: [ok, case_id, status, updated_at]
+
+    PolicyScope:
+      type: object
+      properties:
+        apps:
+          type: array
+          items: { type: string }
+        groups:
+          type: array
+          items: { type: string }
+        event_types:
+          type: array
+          items: { $ref: "#/components/schemas/EventType" }
+      required: [apps, groups, event_types]
+
+    PolicyCondition:
+      type: object
+      description: Condition tree (MVP: store as JSON; server validates)
+      additionalProperties: true
+
+    PolicyAction:
+      type: object
+      description: Policy action (MVP: store as JSON; server validates)
+      additionalProperties: true
+
+    PolicyUpsertRequest:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string, nullable: true }
+        priority: { type: integer }
+        enabled: { type: boolean }
+        scope: { $ref: "#/components/schemas/PolicyScope" }
+        condition: { $ref: "#/components/schemas/PolicyCondition" }
+        action: { $ref: "#/components/schemas/PolicyAction" }
+      required: [name, priority, enabled, scope, condition, action]
+
+    PolicyResponse:
+      allOf:
+        - $ref: "#/components/schemas/PolicyUpsertRequest"
+        - type: object
+          properties:
+            policy_id: { type: string }
+            version: { type: integer }
+            updated_at: { type: string, format: date-time }
+          required: [policy_id, version, updated_at]
+
+    PolicyListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/PolicyResponse" }
+        next_cursor:
+          type: string
+          nullable: true
+      required: [items]
+
+    DetectorResponse:
+      type: object
+      properties:
+        detector_id: { type: string }
+        type:
+          type: string
+          enum: [PII, SECRETS, CODE, CLASSIFIER]
+        enabled: { type: boolean }
+        config:
+          type: object
+          additionalProperties: true
+        version: { type: integer }
+        updated_at: { type: string, format: date-time }
+      required: [detector_id, type, enabled, config, version, updated_at]
+
+    DetectorUpsertRequest:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        config:
+          type: object
+          additionalProperties: true
+      required: [enabled, config]
+
+    DetectorListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/DetectorResponse" }
+      required: [items]
+
+    AppResponse:
+      type: object
+      properties:
+        app_id: { type: string }
+        name: { type: string }
+        domains:
+          type: array
+          items: { type: string }
+        enabled: { type: boolean }
+        updated_at: { type: string, format: date-time }
+      required: [app_id, name, domains, enabled, updated_at]
+
+    AppUpsertRequest:
+      type: object
+      properties:
+        name: { type: string }
+        domains:
+          type: array
+          items: { type: string }
+        enabled: { type: boolean }
+      required: [name, domains, enabled]
+
+    AppListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AppResponse" }
+      required: [items]
+
+    UserItem:
+      type: object
+      properties:
+        user_id: { type: string }
+        email: { type: string, format: email, nullable: true }
+        display_name: { type: string, nullable: true }
+        groups:
+          type: array
+          items: { type: string }
+      required: [user_id, groups]
+
+    UserListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/UserItem" }
+        next_cursor:
+          type: string
+          nullable: true
+      required: [items]
+
+    UserImportRequest:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            type: object
+            properties:
+              email: { type: string, format: email }
+              display_name: { type: string, nullable: true }
+              groups:
+                type: array
+                items: { type: string }
+            required: [email, groups]
+      required: [users]
+
+    UserImportResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        imported_users: { type: integer, minimum: 0 }
+      required: [ok, imported_users]
