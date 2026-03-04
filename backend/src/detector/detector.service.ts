@@ -9,7 +9,7 @@ import {
   totalCount,
 } from 'dlp-core';
 
-export { DetectorHit } from 'dlp-core';
+export type { DetectorHit } from 'dlp-core';
 
 /**
  * 서버 측 탐지 서비스
