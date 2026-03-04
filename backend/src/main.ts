@@ -23,6 +23,7 @@ async function bootstrap() {
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://localhost:8080',
+    'https://sse.aines.kr',
     ...(corsExtra
       ? corsExtra
           .split(',')
