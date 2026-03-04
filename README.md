@@ -252,5 +252,5 @@ ai-aware-sse/
       modal.ts                   # WARN/BLOCK/APPROVAL UI
     build.mjs                    # esbuild 빌드 스크립트
   .github/workflows/
-    deploy.yml                   # 자동 배포
+    deploy.yml                   # 자동 배포 - github actions
 ```
