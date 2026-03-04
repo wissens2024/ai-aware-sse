@@ -61,14 +61,14 @@ jobs:
             [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
             export PATH="$HOME/.local/share/pnpm:$HOME/.npm-global/bin:$PATH"
             cd /home/ju/sase/ai-aware-sse
-            git fetch origin main
+            git fetch --force origin main
             git reset --hard origin/main
             pnpm install
             cd packages/dlp-core && pnpm run build && cd ../..
             cd backend
             npx prisma generate
             pnpm run build
-            pm2 restart sse-backend
+            pm2 restart sse-backend || pm2 start dist/main.js --name sse-backend
 
   deploy-frontend:
     needs: detect-changes
@@ -86,9 +86,9 @@ jobs:
             [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
             export PATH="$HOME/.local/share/pnpm:$HOME/.npm-global/bin:$PATH"
             cd /home/ju/sase/ai-aware-sse
-            git fetch origin main
+            git fetch --force origin main
             git reset --hard origin/main
             pnpm install
             cd frontend-admin
             pnpm run build
-            pm2 restart sse-frontend
+            pm2 restart sse-frontend || pm2 start node_modules/.bin/next --name sse-frontend -- start -p 3000
