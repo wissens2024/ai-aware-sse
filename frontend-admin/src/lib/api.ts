@@ -1,3 +1,10 @@
+import {
+  getStoredToken,
+  getStoredRefreshToken,
+  saveTokens,
+  clearAuth,
+} from '@/components/AuthProvider';
+
 const getBaseUrl = () =>
   process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api/v1';
 
@@ -6,15 +13,64 @@ export async function fetchApi<T>(
   options?: RequestInit
 ): Promise<T> {
   const url = `${getBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`;
+
+  const token = getStoredToken();
+  const authHeaders: Record<string, string> = token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
+
   const res = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...authHeaders,
       ...options?.headers,
     },
   });
+
+  // Auto-refresh on 401
+  if (res.status === 401) {
+    const refreshed = await tryRefresh();
+    if (refreshed) {
+      const newToken = getStoredToken();
+      const retry = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}),
+          ...options?.headers,
+        },
+      });
+      if (!retry.ok) throw new Error(`API error: ${retry.status} ${retry.statusText}`);
+      return retry.json() as Promise<T>;
+    }
+    // Refresh failed — redirect to login
+    clearAuth();
+    window.location.href = '/login';
+    throw new Error('Session expired');
+  }
+
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
+}
+
+async function tryRefresh(): Promise<boolean> {
+  const refreshToken = getStoredRefreshToken();
+  if (!refreshToken) return false;
+
+  try {
+    const res = await fetch(`${getBaseUrl()}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    saveTokens(data.access_token, data.refresh_token);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export type HealthResponse = {

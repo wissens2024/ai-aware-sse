@@ -60,6 +60,9 @@ CREATE TABLE IF NOT EXISTS users (
   external_id       text NULL,                  -- OIDC sub
   email             citext NULL,
   display_name      text NULL,
+  password_hash     varchar(255) NULL,          -- BCrypt, null for SSO-only users
+  role              varchar(20) NOT NULL DEFAULT 'user',  -- 'admin' | 'user'
+  last_login_at     timestamptz NULL,
   created_at        timestamptz NOT NULL DEFAULT now(),
   UNIQUE (tenant_id, external_id),
   UNIQUE (tenant_id, email)
@@ -231,6 +234,17 @@ CREATE TABLE IF NOT EXISTS policy_exceptions (
   created_at            timestamptz NOT NULL DEFAULT now()
 );
 
+-- ---------- AUTH SESSIONS ----------
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  session_id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id          uuid NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+  user_id            uuid NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  refresh_token_hash varchar(255) NOT NULL,
+  expires_at         timestamptz NOT NULL,
+  created_at         timestamptz NOT NULL DEFAULT now(),
+  revoked            boolean NOT NULL DEFAULT false
+);
+
 -- ---------- AUDIT TRAIL ----------
 CREATE TABLE IF NOT EXISTS audit_trail (
   audit_id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -267,6 +281,8 @@ CREATE INDEX IF NOT EXISTS idx_decisions_tenant_outcome_time ON decisions (tenan
 CREATE INDEX IF NOT EXISTS idx_cases_tenant_status_time ON approval_cases (tenant_id, status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_policy_exceptions_lookup ON policy_exceptions (tenant_id, actor_email, policy_id);
 CREATE INDEX IF NOT EXISTS idx_policy_exceptions_expires ON policy_exceptions (expires_at);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires ON auth_sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_audit_tenant_time ON audit_trail (tenant_id, time DESC);
 
 CREATE INDEX IF NOT EXISTS idx_events_group_snapshot_gin ON events USING gin (group_snapshot);

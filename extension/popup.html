@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AI-Aware SSE</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; width: 320px; padding: 20px; background: #f8fafc; color: #1e293b; }
+
+    .logo { text-align: center; margin-bottom: 16px; }
+    .logo-icon { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+    .logo h2 { font-size: 14px; margin-top: 8px; color: #1e293b; }
+    .logo .mode-badge { font-size: 11px; padding: 1px 6px; border: 1px solid #cbd5e1; border-radius: 4px; margin-left: 4px; }
+    .mode-dev { color: #16a34a; } .mode-prod { color: #dc2626; }
+
+    /* Auth status */
+    .auth-status { text-align: center; padding: 12px; margin-bottom: 12px; border-radius: 8px; font-size: 13px; }
+    .auth-status.ok { background: #f0fdf4; color: #166534; }
+    .auth-status.no { background: #fef2f2; color: #991b1b; }
+
+    .user-info { text-align: center; margin-bottom: 12px; }
+    .user-email { font-size: 13px; font-weight: 600; color: #1e293b; }
+    .user-role { font-size: 11px; color: #64748b; }
+
+    /* Form */
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 500; color: #475569; margin-bottom: 4px; }
+    .form-group input { width: 100%; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; outline: none; }
+    .form-group input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+
+    .btn { width: 100%; padding: 8px; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+    .btn-primary { background: #2563eb; color: #fff; } .btn-primary:hover { background: #1d4ed8; }
+    .btn-outline { background: #fff; color: #475569; border: 1px solid #cbd5e1; margin-top: 8px; } .btn-outline:hover { background: #f1f5f9; }
+    .btn-danger { background: #fff; color: #dc2626; border: 1px solid #fecaca; margin-top: 8px; } .btn-danger:hover { background: #fef2f2; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-sso { display: flex; align-items: center; justify-content: center; gap: 6px; background: #fff; color: #475569; border: 1px solid #cbd5e1; margin-bottom: 12px; }
+    .btn-sso:hover { background: #f1f5f9; }
+    .divider { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 11px; color: #94a3b8; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #e2e8f0; }
+
+    .error { font-size: 12px; color: #dc2626; margin-top: 8px; padding: 6px 8px; background: #fef2f2; border-radius: 6px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <!-- Logo -->
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="24" height="24" viewBox="2 1 28 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 2 L28 7 L28 15 C28 22 22.5 27.5 16 30 C9.5 27.5 4 22 4 15 L4 7 Z" fill="white" fill-opacity="0.25"/>
+        <path d="M12.5 14.5 L12.5 12.5 C12.5 10.5 14 9 16 9 C18 9 19.5 10.5 19.5 12.5 L19.5 14.5" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <rect x="10.5" y="14" width="11" height="8" rx="1.5" fill="white"/>
+        <circle cx="16" cy="17.2" r="1.4" fill="#3b82f6"/>
+        <rect x="15.3" y="18" width="1.4" height="2.2" rx="0.5" fill="#3b82f6"/>
+      </svg>
+    </div>
+    <h2>AI-Aware SSE <span id="modeBadge" class="mode-badge"></span></h2>
+  </div>
+
+  <!-- Logged in view -->
+  <div id="loggedInView" class="hidden">
+    <div class="auth-status ok">인증됨</div>
+    <div class="user-info">
+      <div class="user-email" id="userEmail"></div>
+      <div class="user-role" id="userRole"></div>
+    </div>
+    <button class="btn btn-outline" id="optionsBtn">설정</button>
+    <button class="btn btn-danger" id="logoutBtn">로그아웃</button>
+  </div>
+
+  <!-- Login view -->
+  <div id="loginView" class="hidden">
+    <div class="auth-status no">로그인 필요</div>
+
+    <!-- SSO button (hidden by default, shown if SSO enabled) -->
+    <button class="btn btn-sso hidden" id="ssoBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/><path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      SSO로 로그인
+    </button>
+    <div class="divider hidden" id="ssoDivider">OR</div>
+
+    <!-- Local login form -->
+    <div id="localLoginForm">
+      <div class="form-group">
+        <label for="email">이메일</label>
+        <input type="email" id="email" placeholder="admin@example.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="password">비밀번호</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" id="loginBtn">로그인</button>
+    </div>
+
+    <div class="error hidden" id="errorMsg"></div>
+  </div>
+
+  <script src="dist/popup.js"></script>
+</body>
+</html>

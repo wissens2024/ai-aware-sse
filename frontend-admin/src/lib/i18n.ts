@@ -144,6 +144,15 @@ export const translations = {
       from: '시작',
       to: '종료',
     },
+    auth: {
+      subtitle: '관리 콘솔',
+      email: '이메일',
+      password: '비밀번호',
+      login: '로그인',
+      logout: '로그아웃',
+      loginFailed: '로그인에 실패했습니다.',
+      ssoLogin: 'SSO로 로그인',
+    },
   },
   en: {
     nav: {
@@ -287,6 +296,15 @@ export const translations = {
       noAudit: 'No audit entries',
       from: 'From',
       to: 'To',
+    },
+    auth: {
+      subtitle: 'Admin Console',
+      email: 'Email',
+      password: 'Password',
+      login: 'Login',
+      logout: 'Logout',
+      loginFailed: 'Login failed.',
+      ssoLogin: 'Login with SSO',
     },
   },
 } as const;

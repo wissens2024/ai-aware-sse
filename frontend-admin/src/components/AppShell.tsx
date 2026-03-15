@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import {
@@ -16,8 +16,10 @@ import {
   Sun,
   Moon,
   Globe,
+  LogOut,
 } from 'lucide-react';
 import { useLanguage } from './LanguageProvider';
+import { useAuth } from './AuthProvider';
 
 const navItems = [
   { href: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard },
@@ -32,10 +34,28 @@ const navItems = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, t } = useLanguage();
+  const { user, loading, logout } = useAuth();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  // Skip auth guard on login page
+  const isLoginPage = pathname === '/login';
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user && !isLoginPage) {
+      router.replace('/login');
+    }
+  }, [loading, user, isLoginPage, router]);
+
+  // Login page renders its own layout
+  if (isLoginPage) return <>{children}</>;
+
+  // Show nothing while checking auth
+  if (loading || !user) return null;
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -80,6 +100,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
           <div className="border-t border-slate-200 px-4 py-3 dark:border-slate-700">
+            <div className="mb-2 flex items-center gap-2">
+              <div className="flex-1 truncate">
+                <p className="truncate text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {user.display_name ?? user.email}
+                </p>
+                <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">
+                  {user.email}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { logout(); router.replace('/login'); }}
+                className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+                title={t('auth.logout')}
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
             <p className="text-[11px] text-slate-400 dark:text-slate-500">
               v0.1.0
             </p>

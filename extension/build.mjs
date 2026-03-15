@@ -45,6 +45,7 @@ const builds = [
   { entryPoints: [join(__dirname, 'src/content.ts')], outfile: join(distDir, 'content.js') },
   { entryPoints: [join(__dirname, 'src/background.ts')], outfile: join(distDir, 'background.js') },
   { entryPoints: [join(__dirname, 'src/options.ts')], outfile: join(distDir, 'options.js') },
+  { entryPoints: [join(__dirname, 'src/popup.ts')], outfile: join(distDir, 'popup.js') },
 ];
 
 for (const config of builds) {
@@ -55,8 +56,16 @@ for (const config of builds) {
 const manifestSrc = readFileSync(join(__dirname, 'manifest.json'), 'utf-8');
 const manifestDist = manifestSrc
   .replace(/"dist\/content\.js"/g, '"content.js"')
-  .replace(/"dist\/background\.js"/g, '"background.js"');
+  .replace(/"dist\/background\.js"/g, '"background.js"')
+  .replace(/"popup\.html"/g, '"popup.html"');
 writeFileSync(join(distDir, 'manifest.json'), manifestDist);
+
+// popup.html
+const popupHtml = readFileSync(join(__dirname, 'popup.html'), 'utf-8').replace(
+  'src="dist/popup.js"',
+  'src="popup.js"',
+);
+writeFileSync(join(distDir, 'popup.html'), popupHtml);
 
 const optionsHtml = readFileSync(join(__dirname, 'options.html'), 'utf-8').replace(
   'src="dist/options.js"',

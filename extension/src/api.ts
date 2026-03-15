@@ -1,4 +1,5 @@
-import { getApiBase, getDeviceToken } from './config';
+import { getApiBase } from './config';
+import { getAuthToken } from './auth-manager';
 
 export type Outcome = 'ALLOW' | 'WARN' | 'BLOCK' | 'MASK' | 'ANONYMIZE' | 'REQUIRE_APPROVAL';
 
@@ -47,7 +48,7 @@ export type DecisionRequest = {
 };
 
 async function authHeaders(): Promise<HeadersInit> {
-  const token = await getDeviceToken();
+  const token = await getAuthToken();
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,

@@ -1,5 +1,7 @@
 packages:
-  - 'packages/*'
-  - 'backend'
-  - 'frontend-admin'
-  - 'extension'
+  - packages/*
+  - backend
+  - frontend-admin
+  - extension
+
+onlyBuiltDependencies: bcrypt

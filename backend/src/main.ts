@@ -89,6 +89,10 @@ async function bootstrap() {
     .setTitle('SASE Backend API')
     .setDescription('AI-Aware SSE Policy Engine & Admin API')
     .setVersion('0.1.0')
+    .addBearerAuth(
+      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      'jwt-auth',
+    )
     .addTag('api')
     .build();
   const document = SwaggerModule.createDocument(app, config);

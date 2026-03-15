@@ -1,9 +1,11 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Public } from '../auth/decorators/public.decorator';
 import { ExtensionAuthGuard } from '../auth/extension-auth.guard';
 import { DecisionRequestDto } from './dto/decision-request.dto';
 import { ExtensionService } from './extension.service';
 
+@Public() // Skip global JwtAuthGuard — ExtensionAuthGuard handles auth (JWT + legacy token)
 @ApiTags('Extension')
 @ApiBearerAuth('extBearerAuth')
 @Controller('extension')

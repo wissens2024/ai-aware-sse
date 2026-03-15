@@ -219,6 +219,7 @@ model tenants {
   app_domains        app_domains[]
   approval_cases     approval_cases[]
   apps               apps[]
+  auth_sessions      auth_sessions[]
   audit_trail        audit_trail[]
   decisions          decisions[]
   detector_configs   detector_configs[]
@@ -250,10 +251,14 @@ model users {
   external_id                                               String?
   email                                                     String?          @db.Citext
   display_name                                              String?
+  password_hash                                             String?          @db.VarChar(255)
+  role                                                      String           @default("user") @db.VarChar(20)
+  last_login_at                                             DateTime?        @db.Timestamptz(6)
   created_at                                                DateTime         @default(now()) @db.Timestamptz(6)
   approval_cases_approval_cases_decided_by_user_idTousers   approval_cases[] @relation("approval_cases_decided_by_user_idTousers")
   approval_cases_approval_cases_requested_by_user_idTousers approval_cases[] @relation("approval_cases_requested_by_user_idTousers")
   audit_trail                                               audit_trail[]
+  auth_sessions                                             auth_sessions[]
   events                                                    events[]
   user_groups                                               user_groups[]
   tenants                                                   tenants          @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
@@ -261,6 +266,22 @@ model users {
   @@unique([tenant_id, email])
   @@unique([tenant_id, external_id])
   @@index([tenant_id, email], map: "idx_users_tenant_email")
+}
+
+model auth_sessions {
+  @@schema("sse")
+  session_id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id          String   @db.Uuid
+  user_id            String   @db.Uuid
+  refresh_token_hash String   @db.VarChar(255)
+  expires_at         DateTime @db.Timestamptz(6)
+  created_at         DateTime @default(now()) @db.Timestamptz(6)
+  revoked            Boolean  @default(false)
+  users              users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
+  tenants            tenants  @relation(fields: [tenant_id], references: [tenant_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_auth_sessions_user")
+  @@index([expires_at], map: "idx_auth_sessions_expires")
 }
 
 enum approval_status {

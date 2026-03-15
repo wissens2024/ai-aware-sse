@@ -5,48 +5,54 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class ExtensionAuthGuard implements CanActivate {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly jwt: JwtService,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
     const authHeader = request.headers.authorization;
-    const expected = this.config.get<string>('EXT_DEVICE_TOKEN');
-
-    if (!expected) {
-      throw new UnauthorizedException({
-        error: {
-          code: 'AUTH_INVALID_TOKEN',
-          message: 'Extension auth not configured',
-          trace_id: (request as Request & { traceId?: string }).traceId,
-        },
-      });
-    }
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       throw new UnauthorizedException({
         error: {
           code: 'AUTH_INVALID_TOKEN',
           message: 'Missing or invalid Authorization header',
-          trace_id: (request as Request & { traceId?: string }).traceId,
         },
       });
     }
 
     const token = authHeader.slice(7).trim();
-    if (token !== expected) {
-      throw new UnauthorizedException({
-        error: {
-          code: 'AUTH_INVALID_TOKEN',
-          message: 'Invalid token',
-          trace_id: (request as Request & { traceId?: string }).traceId,
-        },
+
+    // 1) Try JWT first
+    try {
+      const payload = await this.jwt.verifyAsync<JwtPayload>(token, {
+        secret: this.config.get<string>('JWT_SECRET'),
       });
+      (request as Request & { user: JwtPayload }).user = payload;
+      return true;
+    } catch {
+      // Not a valid JWT — fall through to legacy token check
     }
 
-    return true;
+    // 2) Fallback: legacy static token (EXT_DEVICE_TOKEN)
+    const expected = this.config.get<string>('EXT_DEVICE_TOKEN');
+    if (expected && token === expected) {
+      return true;
+    }
+
+    throw new UnauthorizedException({
+      error: {
+        code: 'AUTH_INVALID_TOKEN',
+        message: 'Invalid token',
+      },
+    });
   }
 }
