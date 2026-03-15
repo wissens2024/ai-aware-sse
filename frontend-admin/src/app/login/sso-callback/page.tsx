@@ -49,7 +49,12 @@ export default function SsoCallbackPage() {
     }
 
     // Redirect to the target page (force full reload to pick up new auth state)
-    window.location.href = redirectAfter;
+    // Validate: must be a relative path (prevent open redirect)
+    const safeRedirect =
+      redirectAfter && redirectAfter.startsWith('/') && !redirectAfter.startsWith('//')
+        ? redirectAfter
+        : '/';
+    window.location.href = safeRedirect;
   }, [router]);
 
   return (

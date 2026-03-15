@@ -16,7 +16,11 @@ import { ExtensionAuthGuard } from './extension-auth.guard';
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET'),
         signOptions: {
+          algorithm: 'HS256' as const,
           expiresIn: config.get('JWT_ACCESS_EXPIRES_IN', '15m') as any,
+        },
+        verifyOptions: {
+          algorithms: ['HS256'] as const,
         },
       }),
     }),

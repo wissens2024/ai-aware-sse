@@ -72,6 +72,18 @@ export class OidcService {
     };
   }
 
+  /** Validate that redirect path is safe (relative, no protocol) */
+  private sanitizeRedirectAfter(value: string): string {
+    if (!value) return '/';
+    // Must start with '/' and must NOT start with '//' (protocol-relative URL)
+    // Must not contain backslashes (Windows path traversal)
+    if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\')) {
+      return '/';
+    }
+    // Strip any embedded URLs (e.g., /foo?url=http://evil.com is OK, but the path itself is safe)
+    return value;
+  }
+
   /** Build the authorization URL and return it with the state key */
   buildAuthorizeUrl(redirectAfter: string): string {
     if (!this.isEnabled()) {
@@ -93,7 +105,7 @@ export class OidcService {
     // Store state for callback verification
     this.stateStore.set(state, {
       codeVerifier,
-      redirectAfter: redirectAfter || '/',
+      redirectAfter: this.sanitizeRedirectAfter(redirectAfter),
       nonce,
       createdAt: Date.now(),
     });
@@ -159,6 +171,30 @@ export class OidcService {
     }
 
     const tokens: OidcTokenResponse = await res.json();
+
+    // Verify nonce in id_token to prevent replay attacks
+    if (tokens.id_token) {
+      try {
+        const parts = tokens.id_token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(
+            Buffer.from(parts[1], 'base64url').toString('utf-8'),
+          );
+          if (payload.nonce && payload.nonce !== stored.nonce) {
+            throw new UnauthorizedException({
+              error: {
+                code: 'AUTH_SSO_NONCE_MISMATCH',
+                message: 'ID token nonce mismatch — possible replay attack',
+              },
+            });
+          }
+        }
+      } catch (e) {
+        if (e instanceof UnauthorizedException) throw e;
+        this.logger.warn('Failed to decode id_token for nonce verification');
+      }
+    }
+
     return { tokens, redirectAfter: stored.redirectAfter };
   }
 

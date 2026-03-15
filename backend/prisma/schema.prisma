@@ -254,6 +254,8 @@ model users {
   password_hash                                             String?          @db.VarChar(255)
   role                                                      String           @default("user") @db.VarChar(20)
   last_login_at                                             DateTime?        @db.Timestamptz(6)
+  failed_login_count                                        Int              @default(0)
+  locked_until                                              DateTime?        @db.Timestamptz(6)
   created_at                                                DateTime         @default(now()) @db.Timestamptz(6)
   approval_cases_approval_cases_decided_by_user_idTousers   approval_cases[] @relation("approval_cases_decided_by_user_idTousers")
   approval_cases_approval_cases_requested_by_user_idTousers approval_cases[] @relation("approval_cases_requested_by_user_idTousers")

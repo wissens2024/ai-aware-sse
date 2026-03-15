@@ -7,12 +7,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
 
@@ -23,6 +25,7 @@ export class AuthController {
 
   @Public()
   @Post('login')
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @ApiOperation({ summary: 'Login with email and password' })
   async login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(dto.email, dto.password);
@@ -30,6 +33,7 @@ export class AuthController {
 
   @Public()
   @Post('refresh')
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @ApiOperation({ summary: 'Refresh access token' })
   async refresh(@Body() dto: RefreshDto): Promise<AuthResponseDto> {
     return this.authService.refresh(dto.refresh_token);
@@ -58,7 +62,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Change password' })
   async changePassword(
     @CurrentUser() user: JwtPayload,
-    @Body() body: { current_password: string; new_password: string },
+    @Body() body: ChangePasswordDto,
   ) {
     await this.authService.changePassword(
       user.sub,
